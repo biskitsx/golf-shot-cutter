@@ -1,0 +1,5 @@
+packages:
+  - apps/web
+  - libs/contracts
+  - libs/shared
+  - libs/ui
