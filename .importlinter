@@ -1,0 +1,16 @@
+[importlinter]
+root_packages =
+    golf_domain
+    golf_application
+    golf_infrastructure
+    golf_api
+    golf_worker
+
+[importlinter:contract:layered]
+name = Clean Architecture layered dependency
+type = layers
+layers =
+    golf_api | golf_worker
+    golf_infrastructure
+    golf_application
+    golf_domain

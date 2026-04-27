@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: biome
+        name: biome
+        entry: pnpm exec biome check --write
+        language: system
+        types_or: [ts, tsx, javascript, jsx, json]
+        pass_filenames: false
