@@ -35,91 +35,342 @@
 
 ## 4. Architecture
 
+### 4.1 High-level
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   User (Browser)                         │
-│         Next.js Frontend  (upload, review, download)     │
-└─────────────────┬───────────────────────────────────────┘
-                  │ HTTPS
-                  ▼
-┌─────────────────────────────────────────────────────────┐
-│               API Gateway / Backend                      │
-│         FastAPI (Python) — REST + signed URLs            │
-└─────┬─────────────────────────────────┬─────────────────┘
-      │                                 │
-      ▼                                 ▼
-┌─────────────────┐         ┌──────────────────────────┐
-│  Object Store   │         │  Job Queue (Redis)       │
-│  Cloudflare R2  │         │  Celery workers          │
-└─────────────────┘         └────────────┬─────────────┘
-                                         │
-                                         ▼
-                          ┌──────────────────────────┐
-                          │  Worker (CPU)            │
-                          │  1. AudioOnsetDetector   │  ← librosa
-                          │  2. PoseVerifier         │  ← MediaPipe
-                          │  3. ClipCutter           │  ← FFmpeg
-                          │  4. ResultPublisher      │
-                          └──────────────────────────┘
-                                         │
-                                         ▼
-                          ┌──────────────────────────┐
-                          │  MongoDB                 │
-                          │  sessions, shots         │
-                          └──────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                       User (Browser)                          │
+│  apps/web (Next.js) — presentation only, NO business logic    │
+└─────────────────────────┬────────────────────────────────────┘
+                          │ REST + SSE (cookies/JWT)
+                          ▼
+┌──────────────────────────────────────────────────────────────┐
+│  apps/api (NestJS)                                            │
+│  Controllers → Use Cases → Domain                             │
+│  + JWT auth (httpOnly cookies)  + R2 signed URLs  + queue     │
+└──────────┬─────────────────────────┬─────────────────────────┘
+           │                         │
+           ▼                         ▼
+┌──────────────────┐        ┌────────────────────────┐
+│  Cloudflare R2   │        │  Redis (queue + cache) │
+│  raw / clips /   │        └──────────┬─────────────┘
+│  exports / tracer│                   │
+└──────────────────┘                   ▼
+                              ┌────────────────────────┐
+                              │  apps/worker (Python)  │
+                              │  consumes queue jobs   │
+                              │  1. AudioOnsetDetector │  ← librosa
+                              │  2. PoseVerifier       │  ← MediaPipe
+                              │  3. ClipCutter         │  ← FFmpeg
+                              │  4. ResultPublisher    │
+                              └────────┬───────────────┘
+                                       │
+                                       ▼
+                              ┌────────────────────────┐
+                              │  MongoDB Atlas         │
+                              │  sessions, shots       │
+                              └────────────────────────┘
 ```
 
-### Tech Stack
-- **Frontend:** Next.js + TypeScript + Tailwind
-- **Backend:** FastAPI (Python 3.11+)
-- **Workers:** Celery + Redis broker
-- **Storage:** Cloudflare R2 (object store, S3-compatible API) + MongoDB + Redis
-- **Video processing:** FFmpeg, librosa, MediaPipe, OpenCV
+NestJS เป็น **single source of business logic**. Next.js เรียกผ่าน REST/SSE เท่านั้น
+Python worker เป็น specialized service สำหรับ heavy CV/audio work — เชื่อมกับ NestJS ผ่าน Redis queue + เขียน MongoDB ผ่าน infrastructure layer ร่วมกับ NestJS
 
-### Data Flow
-1. User เปิดเว็บ → ขอ signed upload URL → upload ตรงเข้า object store (ไม่ผ่าน server)
-2. Server enqueue job → Worker ดึงไฟล์มาประมวลผล
-3. Worker ทำ 4 stage: audio onset → pose verify → ffmpeg cut → publish
-4. Frontend poll/SSE → แสดง timeline ให้ user review/แก้ → export ZIP
+### 4.2 Clean Architecture Layers
+
+แต่ละ layer พึ่งพาเฉพาะ layer "ใน" (inward dependency rule):
+
+```
+┌────────────────── apps (Frameworks & Drivers) ──────────────────┐
+│  apps/web · Next.js                  apps/api · NestJS          │
+│  (presentation only)                 (controllers, gateways)    │
+│                                      apps/worker · Python       │
+└─────────────────────────────┬───────────────────────────────────┘
+                              ▼
+┌──────────────── libs/infrastructure (Adapters) ─────────────────┐
+│  MongoRepositories · R2StorageAdapter · RedisQueueAdapter       │
+│  JwtAuthAdapter · ConfigService · Logger                        │
+└─────────────────────────────┬───────────────────────────────────┘
+                              ▼
+┌──────────────── libs/application (Use Cases) ───────────────────┐
+│  CreateSessionUseCase · ProcessVideoUseCase                     │
+│  ListShotsUseCase · UpdateShotBoundaryUseCase                   │
+│  AddManualShotUseCase · ExportZipUseCase                        │
+│  + Repository interfaces (ports)                                │
+└─────────────────────────────┬───────────────────────────────────┘
+                              ▼
+┌──────────────── libs/domain (Entities & Rules) ─────────────────┐
+│  Session · Shot · TimeRange · Confidence                        │
+│  Domain events: ShotDetected, SessionReady                      │
+│  Pure TypeScript — no framework imports                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.3 Nx Monorepo Layout
+
+```
+golf-shot-cutter/                # repo root
+  pnpm-workspace.yaml
+  nx.json
+  package.json
+  tsconfig.base.json
+
+  apps/
+    web/                         # Next.js 16 — presentation only
+    api/                         # NestJS — controllers, gateways, DI wiring
+    worker/                      # Python (NOT Nx-managed; sibling app)
+                                 # uses apps/api's REST/queue contract via libs/contracts
+
+  libs/
+    domain/                      # entities, value objects, domain events (pure TS)
+    application/                 # use cases + repository interfaces (depends on domain)
+    infrastructure/              # repos, R2, Mongo, Redis (depends on application + domain)
+    contracts/                   # generated DTOs/zod schemas shared between web + api + worker
+    shared/                      # cross-cutting helpers (Result type, Either, Logger interface)
+    ui/                          # shadcn components extracted ถ้าเริ่ม share
+```
+
+**Dependency rules (enforced via Nx tags):**
+- `domain` → no deps
+- `application` → `domain` only
+- `infrastructure` → `application` + `domain`
+- `apps/api` → `infrastructure` + `application` + `domain` + `contracts`
+- `apps/web` → `contracts` + `ui` + `shared` (ห้าม import `domain` / `application` / `infrastructure` ตรงๆ — talk via REST)
+
+### 4.4 Tech Stack
+
+**Frontend (`apps/web`)**
+- Next.js 16 (App Router) + TypeScript strict
+- pnpm
+- Tailwind CSS v4 + shadcn/ui
+- TanStack Query (`staleTime: Infinity`, `gcTime: 30min`, `retry: 1`, `refetchOnWindowFocus: false`)
+- next-intl (Thai default + English)
+- Auth: JWT จาก NestJS via httpOnly cookies (ไม่มี frontend auth lib)
+- Linting: Biome
+- SSE invalidation pattern: backend push → `useRealtimeInvalidation` invalidates query keys
+
+**Backend (`apps/api`)**
+- NestJS + TypeScript strict
+- Mongoose / Prisma Mongo (ตัดสินใจตอน plan)
+- Bull/BullMQ (Redis queue producer)
+- @nestjs/jwt + cookie-parser
+
+**Worker (`apps/worker`)**
+- Python 3.11+
+- BullMQ-compatible client (`bullmq` Python port) หรือใช้ Redis pub/sub format ที่ฝั่ง NestJS define
+- Celery ทดแทนได้แต่จะมี broker schema ของตัวเอง — ถ้า NestJS produce ด้วย BullMQ ให้ Python ใช้ schema เดียวกัน
+- librosa, MediaPipe, OpenCV, FFmpeg
+
+**Storage / Infra**
+- Cloudflare R2 (S3-compatible) — raw / clips / exports / tracer
+- MongoDB Atlas (M0 free tier OK สำหรับ MVP)
+- Redis (queue + cache)
+- Deployment: **Docker → Azure Container Registry → ArgoCD → AKS**
+
+### 4.5 Data Flow
+
+1. User เปิด `apps/web` → SignIn → JWT cookie set
+2. User upload: `apps/web` ขอ signed PUT URL จาก `apps/api` → upload ตรงเข้า R2 (ไม่ผ่าน server)
+3. `apps/web` แจ้ง `POST /sessions/:id/process` → NestJS use case enqueue job ไปที่ Redis
+4. `apps/worker` consume job → ทำ 4 stage → write ผ่าน infrastructure interface → publish `SessionReady` event
+5. NestJS push SSE event ที่ frontend → `useRealtimeInvalidation` → refetch
+6. User review timeline → drag handles → mutation → `PATCH /sessions/:id/shots/:shotId` → invalidate query
+7. Export: `POST /sessions/:id/export` → NestJS enqueue lightweight zip job → R2 signed download URL
 
 ## 5. Components
 
-### 5.1 Frontend (Next.js)
-- **Upload page** — drag/drop, ขอ signed URL, progress bar
-- **Session list** — รายการ session พร้อม status (poll)
-- **Review timeline** — video player + timeline พร้อม shot markers, drag handles ปรับ in/out, sidebar list
-- **Export** — ZIP download ผ่าน signed URL
+### 5.1 `apps/web` — Next.js Frontend (presentation only)
 
-### 5.2 API (FastAPI)
-- `POST /sessions` — สร้าง session, return signed upload URL + sessionId
-- `POST /sessions/{id}/process` — enqueue job หลัง upload เสร็จ
-- `GET /sessions/{id}` — สถานะ + รายการ shot
-- `PATCH /sessions/{id}/shots/{shotId}` — แก้ in/out point
-- `POST /sessions/{id}/shots` — เพิ่ม shot ด้วยมือ
-- `DELETE /sessions/{id}/shots/{shotId}` — ลบ shot
-- `POST /sessions/{id}/export` — generate ZIP, return signed download URL
+#### Folder structure
+```
+apps/web/
+  src/
+    app/[locale]/                 # App Router; route groups (auth), (dashboard)
+      (dashboard)/
+        sessions/
+          page.tsx                # session list
+          [id]/page.tsx           # review timeline
+        upload/page.tsx
+    features/
+      sessions/
+        components/               # SessionCard, SessionStatusBadge
+        hooks/                    # useSessionsQuery, useCreateSessionMutation
+        types/                    # local view-model types (re-export from contracts)
+      shots/
+        components/               # TimelineRuler, ShotMarker, DragHandle, ShotSidebarItem
+        hooks/                    # useShotsQuery, useUpdateShotBoundaryMutation, useDeleteShotMutation
+        types/
+      upload/
+        components/               # UploadDropzone, UploadProgress
+        hooks/                    # useSignedUploadUrl, useUploadVideoMutation
+        types/
+      review/
+        components/               # ReviewTimeline (composes shots/* + video player)
+        hooks/                    # usePlayerSync
+      realtime/
+        hooks/                    # useRealtimeInvalidation (SSE → invalidateQueries)
+    lib/
+      api-client.ts               # axios + JWT cookie + refresh interceptor
+      query-client.ts             # global TanStack Query config (Infinity stale, etc.)
+      utils.ts
+    i18n/
+      config.ts
+      messages/{th,en}.json
+    components/                   # shared shadcn/ui (Button, Card, Dialog, ...)
+    hooks/                        # cross-feature (e.g. useDebouncedValue)
+    styles/                       # global Tailwind layers
+    contracts/                    # auto-generated from libs/contracts/ — never edit
+    types/                        # cross-feature view-model types
+    proxy.ts                      # rewrite/proxy helper
+```
 
-### 5.3 Worker Pipeline
-แต่ละ stage เป็น pure function (input → output) ไม่แตะ I/O โดยตรง → test แยกได้, swap ได้
+#### Constraints (จาก user requirement)
+- **Components ไม่เรียก axios/fetch ตรงๆ** — ต้องผ่าน hook
+- TanStack Query global config: `staleTime: Infinity`, `gcTime: 30min`, `retry: 1`, `refetchOnWindowFocus: false`
+- ห้ามใส่ `refetchOnWindowFocus: true` / `staleTime: 0` / `refetchOnMount: "always"` ใน feature hooks (ป้องกัน blast หลายๆ query เมื่อ refocus tab)
+- Freshness มาจาก mutation `invalidateQueries(...)` + SSE invalidation เท่านั้น
+- Query keys ใช้ prefix ตรงกับ event ที่ backend emit (เช่น `["sessions", sessionId, "shots"]`)
+- **ไม่เขียน test ใหม่** (no-new-tests rule); existing test commands ยัง verify ได้
+- Lint: Biome
+- i18n: ทุก string ผ่าน `next-intl`
 
-- **AudioOnsetDetector**
-  - Input: video file path
-  - Process: ffmpeg extract WAV → bandpass 2-8 kHz → librosa.onset.onset_detect → amplitude threshold + transient sharpness (rise time < 5ms)
-  - Output: `[timestamp_seconds, ...]` candidate impact times
-- **PoseVerifier**
-  - Input: video + candidate timestamps
-  - Process: extract frames `[t-1.0s, t+0.3s]` ทุก 3 frames → MediaPipe Pose → compute wrist angular velocity, shoulder rotation, hip-shoulder separation → classify swing vs not
-  - Output: `[(timestamp, confidence), ...]` confirmed
-- **ClipCutter**
-  - Input: video + confirmed timestamps + pre/post-roll
-  - Process: คำนวณ in/out, merge overlapping windows, ffmpeg `-ss -to -c copy` (stream copy, ไม่ encode ใหม่)
-  - Output: ไฟล์คลิปย่อย shot_001.mp4, ...
-- **ResultPublisher**
-  - Input: clip files + metadata
-  - Process: upload ขึ้น R2, insert metadata MongoDB, notify API
-  - Output: session status = "ready"
+### 5.2 `apps/api` — NestJS Backend (Clean Architecture host)
 
-### 5.4 Data Model (MongoDB)
+#### Module layout
+```
+apps/api/src/
+  main.ts                         # bootstrap + cookie-parser + SSE
+  app.module.ts                   # imports feature modules
+  modules/
+    sessions/
+      sessions.controller.ts      # REST handlers
+      sessions.module.ts          # binds use cases ↔ controllers
+    shots/
+    upload/
+    export/
+    realtime/                     # SSE endpoint
+    auth/                         # JWT guard, cookie strategy
+  composition/
+    container.ts                  # wires libs/application use cases with libs/infrastructure adapters
+  filters/, interceptors/, guards/
+```
+
+#### REST endpoints
+- `POST /sessions` — create session, return `{ sessionId, signedUploadUrl }`
+- `POST /sessions/:id/process` — enqueue processing job
+- `GET /sessions` — list sessions (current user)
+- `GET /sessions/:id` — session + shots
+- `PATCH /sessions/:id/shots/:shotId` — update in/out (calls `UpdateShotBoundaryUseCase`)
+- `POST /sessions/:id/shots` — manual add (`AddManualShotUseCase`)
+- `DELETE /sessions/:id/shots/:shotId`
+- `POST /sessions/:id/export` — enqueue zip job, return `{ exportId }`
+- `GET /sessions/:id/export/:exportId` — signed download URL when ready
+- `GET /sessions/:id/events` (SSE) — push processing progress + ready events
+
+Controllers ทำหน้าที่ map HTTP ↔ Use Case input/output เท่านั้น **ห้ามมี business logic ใน controller**
+
+### 5.3 `libs/domain`
+
+Pure TypeScript entities, ไม่มี framework import:
+```
+Session(id, userId?, rawVideoKey, status, preRoll, postRoll, ...)
+Shot(id, sessionId, index, tImpact, tStart, tEnd, confidence, source, clipKey?)
+TimeRange(start, end)
+Confidence(value: 0..1)
+
+Domain events:
+  SessionCreated, SessionProcessingStarted, ShotDetected,
+  SessionReady, SessionFailed, ShotBoundaryUpdated, ShotDeleted
+```
+
+Domain rules ที่ enforce ใน entity:
+- `Shot.adjustBoundary(tStart, tEnd)` — validate `tStart < tImpact < tEnd`, max duration
+- `Session.allowEdit()` — only when status = "ready"
+- Pre/post-roll validation
+
+### 5.4 `libs/application` — Use Cases + Ports
+
+```
+use-cases/
+  CreateSessionUseCase
+  RequestSignedUploadUrlUseCase
+  StartProcessingUseCase           # enqueue worker job
+  ProcessVideoUseCase              # called from worker side (orchestrates pipeline result)
+  ListSessionsUseCase
+  GetSessionWithShotsUseCase
+  UpdateShotBoundaryUseCase
+  AddManualShotUseCase
+  DeleteShotUseCase
+  ExportSessionZipUseCase
+
+ports/                              # interfaces — implementations live in infrastructure
+  SessionRepository
+  ShotRepository
+  StorageGateway                   # signedPutUrl, signedGetUrl, deleteObject
+  JobQueue                         # enqueue, consume
+  EventPublisher                   # publish domain events (→ SSE bridge)
+  Clock, IdGenerator               # for testability
+```
+
+แต่ละ use case รับ port ผ่าน DI (ไม่ import infrastructure ตรง). Test ได้ด้วย in-memory implementations
+
+### 5.5 `libs/infrastructure` — Adapters
+
+```
+mongo/
+  MongoSessionRepository (implements SessionRepository)
+  MongoShotRepository
+  schemas/ (mongoose / zod)
+r2/
+  R2StorageGateway (implements StorageGateway)  # AWS SDK v3 with R2 endpoint
+queue/
+  BullMqJobQueue (implements JobQueue)          # producer side
+  BullMqEventPublisher
+auth/
+  JwtAuthService                                # cookie-based JWT
+config/
+  ConfigService                                 # env validation (zod)
+logging/
+  PinoLogger
+```
+
+### 5.6 `libs/contracts` — Wire-format DTOs
+
+- Zod schemas (single source) → generate TS types สำหรับ web + api
+- Generate JSON schemas สำหรับ Python worker (เพื่อ validate event payloads)
+- Sync script `scripts/sync-contracts.mjs` (รัน in CI)
+
+ตัวอย่าง: `SessionDto`, `ShotDto`, `CreateSessionRequest`, `UpdateShotBoundaryRequest`, `SseEventEnvelope`
+
+### 5.7 `apps/worker` — Python Pipeline
+
+Worker เป็น sibling app (ไม่ใช่ Nx project) ใช้ contract ที่ export จาก `libs/contracts`
+
+```
+apps/worker/
+  pyproject.toml
+  src/
+    main.py                       # BullMQ consumer entry
+    pipeline/
+      audio_onset.py              # AudioOnsetDetector
+      pose_verifier.py            # PoseVerifier (MediaPipe)
+      clip_cutter.py              # ClipCutter (FFmpeg stream copy)
+      result_publisher.py         # writes Mongo + emits SessionReady
+    adapters/
+      mongo_repo.py               # mirrors MongoShotRepository writes
+      r2_client.py
+      queue_consumer.py
+    domain/                       # mirror of TS domain (minimal — Pydantic models from contracts)
+  Dockerfile                      # python:3.11-slim + ffmpeg
+```
+
+Worker pipeline (เหมือนเดิม):
+
+- **AudioOnsetDetector** — ffmpeg → WAV → bandpass 2-8 kHz → librosa.onset → amplitude + transient sharpness < 5ms
+- **PoseVerifier** — MediaPipe pose ทุก 3 frames ใน window `[t-1.0s, t+0.3s]` → wrist angular velocity + shoulder rotation + hip-shoulder separation
+- **ClipCutter** — ffmpeg `-ss -to -c copy` stream copy
+- **ResultPublisher** — upload R2 + write Mongo + emit `SessionReady` event ผ่าน Redis pub/sub (NestJS realtime module subscribe + push SSE)
+
+### 5.8 Data Model (MongoDB)
 
 ใช้ 2 collections; embed `shots` ใน `sessions` ก็ได้แต่แยกออกมาเพื่อให้ update shot รายตัวง่าย (PATCH in/out point) และ query/index ตรงๆ ได้
 
@@ -186,22 +437,41 @@ Indexes: `{ sessionId: 1, index: 1 }`
 | Audio extract fail | Mark stage failed, ส่ง error เฉพาะ stage นั้น |
 | Pose detect fail | Skip pose verify, fall back to audio-only (low confidence) |
 | FFmpeg cut fail | Retry stage; ถ้า fail ซ้ำ mark session failed |
-| Worker crash | Celery retry policy: 3 attempts, exponential backoff |
+| Worker crash | BullMQ retry policy: 3 attempts, exponential backoff |
 | 0 shots detected | UI แนะนำ + เปิด manual mode |
 
 ## 8. Testing Strategy
 
-### Unit tests (per pipeline stage)
+> **No-new-tests rule** สำหรับ `apps/web`: ตามข้อกำหนดของ user — Vitest/RTL/Playwright suites ที่มีอยู่ยัง verify ผ่าน `pnpm verify` ได้ แต่ไม่เพิ่ม test ใหม่ในฝั่ง frontend
+>
+> สำหรับ `libs/domain`, `libs/application`, `libs/infrastructure`, `apps/api`, `apps/worker` — ใส่ test ตามปกติ เพราะเป็น greenfield และเป็นที่อยู่ของ business logic
+
+### `libs/domain` (Vitest, fast)
+- Entity invariants — `Shot.adjustBoundary` reject case เลย impact, ลบ shot duration ติดลบ ฯลฯ
+
+### `libs/application` (Vitest, in-memory adapters)
+- Each use case test ด้วย in-memory `SessionRepository` / `ShotRepository` / `JobQueue`
+- เน้น coverage ของ branching logic — ไม่ต้อง mock framework
+
+### `libs/infrastructure` (integration)
+- Mongo adapters: ใช้ `mongodb-memory-server`
+- R2 adapter: ใช้ MinIO local container เป็น S3-compatible substitute
+- Queue adapter: real Redis container ใน CI
+
+### `apps/api` (e2e ใน NestJS)
+- Supertest หา controller-level — happy path ของแต่ละ endpoint
+
+### `apps/worker` (Python, pytest)
 - AudioOnsetDetector: feed WAV ที่มี/ไม่มี impact → ตรวจ output timestamps
 - PoseVerifier: feed frames ของ swing/non-swing → ตรวจ classification
 - ClipCutter: feed video + timestamps → ตรวจ output file duration & playable
 
-### Integration tests
-- Test fixture: 2-3 short videos จริง (ตัวเองตี + เสียงรบกวน)
-- Run full pipeline → assert จำนวน shot, range, file integrity
+### End-to-end (manual, no automation in v1)
+- Upload จริงบน staging → review timeline → ปรับ → export → ตรวจ ZIP
 
-### Manual / E2E
-- Upload จริง บน staging → ดู timeline → ปรับ → export → ตรวจ ZIP
+### `pnpm verify`
+- รันที่ root: `nx run-many -t lint,build,test` + Python `pytest` ผ่าน script
+- รันครั้งเดียวตอน end-of-task (ไม่รันกลางทาง)
 
 ## 8.1 Storage Layout (R2)
 
@@ -274,14 +544,55 @@ tracer/{sessionId}/shot_{index:03d}.mp4   ← Phase 2 only
 | 2 — Tracer | CPU (+ optional GPU) | ~$0.03-0.10 |
 | 3 — Swing Analysis | CPU + LLM API | ~$0.10-0.20 |
 
-## 12. Open Questions (สำหรับ implementation plan)
+## 12. Deployment
 
-- Hosting target: self-host (DigitalOcean/Hetzner) หรือ managed (Vercel + Railway/Fly)?
+ใช้ pipeline เดียวกันทุก app: **Docker → Azure Container Registry → ArgoCD → AKS**
+
+```
+apps/web/Dockerfile       → ACR: golf-shot-cutter/web:<sha>
+apps/api/Dockerfile       → ACR: golf-shot-cutter/api:<sha>
+apps/worker/Dockerfile    → ACR: golf-shot-cutter/worker:<sha>
+```
+
+- **CI** (GitHub Actions): nx affected → build → push image แต่ละ service ที่เปลี่ยน
+- **CD**: GitOps repo ถือ Helm/Kustomize manifests → ArgoCD sync ไปยัง AKS namespace
+- AKS pods:
+  - `web` deployment (3 replicas, autoscale CPU)
+  - `api` deployment (3 replicas) + Service + Ingress
+  - `worker` deployment (เริ่ม 1 replica, KEDA scaler ตาม Redis queue depth)
+- Secrets ผ่าน AKS-integrated Azure Key Vault: `MONGODB_URI`, `REDIS_URL`, `R2_ACCESS_KEY`, `R2_SECRET_KEY`, `JWT_SECRET`, `R2_ENDPOINT`
+
+## 13. Nx Conventions
+
+### Tags (`nx.json` projects.tags)
+- `type:app`, `type:lib`
+- `scope:domain`, `scope:application`, `scope:infrastructure`, `scope:contracts`, `scope:web`, `scope:api`, `scope:shared`
+
+### `enforce-module-boundaries` rule (eslint/biome custom)
+```
+domain          → no deps
+application     → tag scope:domain only
+infrastructure  → tag scope:application or scope:domain
+api (app)       → tag scope:infrastructure | application | domain | contracts
+web (app)       → tag scope:contracts | shared | ui   (NOT domain/application/infrastructure)
+```
+
+### Generators
+- `nx g @nx/next:app web`
+- `nx g @nx/nest:app api`
+- `nx g @nx/js:lib domain --tags=type:lib,scope:domain --bundler=none`
+- (similar for application / infrastructure / contracts)
+
+## 14. Open Questions (สำหรับ implementation plan)
+
+- Mongo client choice: **Mongoose vs Prisma Mongo** ใน `libs/infrastructure`?
+- BullMQ on Python: ใช้ `bullmq` python port หรือเปลี่ยนเป็น raw Redis pub/sub schema (ฝั่ง NestJS publisher ใช้ matching format)?
 - Auth: ต้อง multi-user ตั้งแต่ v1 หรือ single-user ก่อน?
 - R2 jurisdiction: APAC (เอเชียตะวันออก) เพื่อลด upload latency, หรือ default global
-- MongoDB host: self-host vs MongoDB Atlas (free tier M0 น่าจะพอสำหรับ MVP)
+- MongoDB host: Atlas M0 (free) vs self-host บน AKS
 - ขนาดไฟล์สูงสุดที่รับ: 1 GB? 2 GB?
 - Retention: เก็บ raw video กี่วัน? คลิปย่อยเก็บกี่วัน?
+- Locale default: `th` ก่อนแล้ว fallback `en` (ตาม brief) — confirm
 
 ---
 
