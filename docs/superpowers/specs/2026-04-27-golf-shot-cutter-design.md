@@ -50,7 +50,7 @@
       ▼                                 ▼
 ┌─────────────────┐         ┌──────────────────────────┐
 │  Object Store   │         │  Job Queue (Redis)       │
-│  S3 / R2 / GCS  │         │  Celery workers          │
+│  Cloudflare R2  │         │  Celery workers          │
 └─────────────────┘         └────────────┬─────────────┘
                                          │
                                          ▼
@@ -64,7 +64,7 @@
                                          │
                                          ▼
                           ┌──────────────────────────┐
-                          │  Postgres                │
+                          │  MongoDB                 │
                           │  sessions, shots         │
                           └──────────────────────────┘
 ```
@@ -73,7 +73,7 @@
 - **Frontend:** Next.js + TypeScript + Tailwind
 - **Backend:** FastAPI (Python 3.11+)
 - **Workers:** Celery + Redis broker
-- **Storage:** Object store (S3/R2/GCS) + Postgres + Redis
+- **Storage:** Cloudflare R2 (object store, S3-compatible API) + MongoDB + Redis
 - **Video processing:** FFmpeg, librosa, MediaPipe, OpenCV
 
 ### Data Flow
@@ -116,31 +116,49 @@
   - Output: ไฟล์คลิปย่อย shot_001.mp4, ...
 - **ResultPublisher**
   - Input: clip files + metadata
-  - Process: upload ขึ้น object store, insert metadata Postgres, notify API
+  - Process: upload ขึ้น R2, insert metadata MongoDB, notify API
   - Output: session status = "ready"
 
-### 5.4 Data Model (Postgres)
-```
-sessions
-  id (uuid pk)
-  user_id (fk, nullable for v1)
-  raw_video_url (text)
-  status (enum: uploading, queued, processing, ready, failed)
-  pre_roll_seconds (float, default 2.0)
-  post_roll_seconds (float, default 5.0)
-  created_at, updated_at
+### 5.4 Data Model (MongoDB)
 
-shots
-  id (uuid pk)
-  session_id (fk)
-  t_impact (float)         -- seconds
-  t_start (float)          -- seconds (after pre-roll, user-editable)
-  t_end (float)            -- seconds (after post-roll, user-editable)
-  confidence (float)       -- 0..1
-  source (enum: auto, manual)
-  clip_url (text, nullable)
-  created_at, updated_at
+ใช้ 2 collections; embed `shots` ใน `sessions` ก็ได้แต่แยกออกมาเพื่อให้ update shot รายตัวง่าย (PATCH in/out point) และ query/index ตรงๆ ได้
+
+**`sessions` collection**
+```js
+{
+  _id: ObjectId,
+  userId: ObjectId | null,         // nullable for v1 (single-user)
+  rawVideoKey: "raw/{sessionId}/{filename}",   // R2 object key
+  rawVideoUrl: "https://...",                  // optional cached signed URL
+  status: "uploading" | "queued" | "processing" | "ready" | "failed",
+  preRollSeconds: 2.0,
+  postRollSeconds: 5.0,
+  shotCount: 12,                   // denormalized for list views
+  durationSeconds: 923.4,
+  error: { stage, message } | null,
+  createdAt: ISODate,
+  updatedAt: ISODate
+}
 ```
+Indexes: `{ userId: 1, createdAt: -1 }`, `{ status: 1 }`
+
+**`shots` collection**
+```js
+{
+  _id: ObjectId,
+  sessionId: ObjectId,
+  index: 3,                        // 1-based ordering within session
+  tImpact: 42.518,                 // seconds
+  tStart: 40.518,                  // user-editable (after pre-roll)
+  tEnd: 47.518,                    // user-editable (after post-roll)
+  confidence: 0.87,                // 0..1
+  source: "auto" | "manual",
+  clipKey: "clips/{sessionId}/shot_003.mp4",   // R2 object key
+  createdAt: ISODate,
+  updatedAt: ISODate
+}
+```
+Indexes: `{ sessionId: 1, index: 1 }`
 
 ## 6. Detection Algorithm (Phase 1)
 
@@ -185,6 +203,20 @@ shots
 ### Manual / E2E
 - Upload จริง บน staging → ดู timeline → ปรับ → export → ตรวจ ZIP
 
+## 8.1 Storage Layout (R2)
+
+โครงสร้าง object key ใน R2 bucket:
+```
+raw/{sessionId}/{originalFilename}        ← uploaded raw video
+clips/{sessionId}/shot_{index:03d}.mp4    ← cut clips (Phase 1)
+exports/{sessionId}/{exportId}.zip        ← generated ZIP (lazy, expires)
+tracer/{sessionId}/shot_{index:03d}.mp4   ← Phase 2 only
+```
+
+- ใช้ **signed URLs** ทุกการ upload/download (ไม่เปิด bucket public)
+- **Lifecycle rule**: ลบ `raw/*` หลัง 30 วัน, `exports/*` หลัง 7 วัน, `clips/*` ตามที่ user ตั้ง (default 90 วัน)
+- R2 ไม่มี egress fee → คุ้มกว่า S3 มากเมื่อมีการ download คลิปบ่อย
+
 ## 9. Phase 2 — Tracer (~3-5 สัปดาห์)
 
 ต่อยอดจาก Phase 1 โดยเพิ่ม pipeline stage:
@@ -211,7 +243,7 @@ shots
 
 ### Architecture impact
 - เพิ่ม 2 stage ใน worker pipeline
-- เพิ่ม `tracer_clip_url` ใน `shots` table (rendered version)
+- เพิ่ม `tracerClipKey` ใน `shots` document (rendered version)
 - Frontend อาจมี toggle "show tracer" ระหว่าง raw clip / tracer clip
 
 ## 10. Phase 3 — Swing Analysis (~6-8 สัปดาห์)
@@ -225,13 +257,13 @@ shots
 
 ### Implementation
 - Reuse pose data ของทุก shot ที่ track ไว้แล้ว
-- New service `SwingAnalyzer` คำนวณ metric per shot, persist ใน `swing_metrics` table
+- New service `SwingAnalyzer` คำนวณ metric per shot, persist ใน `swing_metrics` collection
 - New `comparisons` UI หน้า ghost-overlay
 - Claude API integration สำหรับ commentary (with prompt caching)
 
 ### Architecture impact
 - เพิ่ม `SwingAnalyzer` worker stage
-- เพิ่ม `swing_metrics` table + `analysis_runs` table
+- เพิ่ม `swing_metrics` collection + `analysis_runs` collection
 - Dashboard UI ใหม่
 
 ## 11. Cost Estimate
@@ -246,7 +278,8 @@ shots
 
 - Hosting target: self-host (DigitalOcean/Hetzner) หรือ managed (Vercel + Railway/Fly)?
 - Auth: ต้อง multi-user ตั้งแต่ v1 หรือ single-user ก่อน?
-- Storage region: ใช้ที่ใกล้ผู้ใช้ (เอเชียตะวันออก/ใต้) เพื่อลด upload latency
+- R2 jurisdiction: APAC (เอเชียตะวันออก) เพื่อลด upload latency, หรือ default global
+- MongoDB host: self-host vs MongoDB Atlas (free tier M0 น่าจะพอสำหรับ MVP)
 - ขนาดไฟล์สูงสุดที่รับ: 1 GB? 2 GB?
 - Retention: เก็บ raw video กี่วัน? คลิปย่อยเก็บกี่วัน?
 
