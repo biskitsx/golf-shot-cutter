@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["apps/api"]
+members = ["apps/api", "apps/worker"]
 
 [tool.uv]
 dev-dependencies = [
