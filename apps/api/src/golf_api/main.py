@@ -29,8 +29,11 @@ def create_app(env: str = "production") -> FastAPI:
     app = FastAPI(title="golf-shot-cutter API", version="0.2.0", lifespan=lifespan)
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
+    from .routers.shots import router as shots_router
+
     app.include_router(auth_router)
     app.include_router(sessions_router)
+    app.include_router(shots_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
