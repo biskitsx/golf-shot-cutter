@@ -1,7 +1,7 @@
 import pytest
 from mongomock_motor import AsyncMongoMockClient
 
-from app.repository.mongo.indexes import ensure_indexes
+from app.persistence.mongo.indexes import ensure_indexes
 
 
 @pytest.fixture

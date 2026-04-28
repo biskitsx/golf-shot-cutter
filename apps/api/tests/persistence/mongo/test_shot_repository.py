@@ -6,7 +6,7 @@ from mongomock_motor import AsyncMongoMockClient
 from app.services.errors import ShotNotFoundError
 from app.core.models.shot import Shot, ShotSource
 from app.core.models.value_objects import Confidence
-from app.repository.mongo.shot_repository import MongoShotRepository
+from app.persistence.mongo.shot_repository import MongoShotRepository
 
 
 def _shot(id: str, session_id: str, index: int) -> Shot:

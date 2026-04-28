@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from app.core.models.session import Session, SessionError, SessionStatus
 from app.core.models.shot import Shot, ShotSource
 from app.core.models.value_objects import Confidence
-from app.repository.mongo.documents import (
+from app.persistence.mongo.documents import (
     session_from_doc,
     session_to_doc,
     shot_from_doc,

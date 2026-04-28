@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from app.repository.r2.storage_repository import SignedUrl
+from app.infrastructure.storage.r2_storage import SignedUrl
 
 
 class FakeStorage:

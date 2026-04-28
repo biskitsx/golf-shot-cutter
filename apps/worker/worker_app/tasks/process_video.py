@@ -7,8 +7,8 @@ import urllib.request
 from celery import shared_task
 
 from app.core.models.events import SessionFailed
-from app.repository.queue.celery_app import PROCESS_VIDEO_TASK
-from app.repository.r2.storage_repository import R2StorageRepository
+from app.infrastructure.queue.celery_app import PROCESS_VIDEO_TASK
+from app.infrastructure.storage.r2_storage import R2Storage
 from app.services.processing_service import ProcessVideoInput
 from worker_app.container import WorkerContainer
 from worker_app.pipeline.audio_onset_librosa import LibrosaAudioOnsetDetector
@@ -100,12 +100,12 @@ async def _run(payload: dict) -> None:
             pass
 
 
-async def _download_object(storage: R2StorageRepository, key: str, out_path: str) -> None:
+async def _download_object(storage: R2Storage, key: str, out_path: str) -> None:
     signed = await storage.signed_get_url(key)
     urllib.request.urlretrieve(signed.url, out_path)
 
 
-async def _upload_object(storage: R2StorageRepository, local_path: str, key: str) -> None:
+async def _upload_object(storage: R2Storage, local_path: str, key: str) -> None:
     signed = await storage.signed_put_url(key, content_type="video/mp4")
     with open(local_path, "rb") as f:
         req = urllib.request.Request(

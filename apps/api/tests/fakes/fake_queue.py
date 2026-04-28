@@ -1,4 +1,4 @@
-from app.repository.queue.job_queue_repository import (
+from app.infrastructure.queue.celery_job_queue import (
     GenerateExportZipJob,
     ProcessVideoJob,
 )

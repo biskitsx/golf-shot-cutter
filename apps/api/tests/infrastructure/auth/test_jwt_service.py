@@ -1,10 +1,10 @@
 import pytest
 
-from app.repository.auth.jwt_repository import JwtRepository, JwtVerifyError
+from app.infrastructure.auth.jwt_service import JwtService, JwtVerifyError
 
 
-def _service() -> JwtRepository:
-    return JwtRepository(secret="x" * 32, issuer="golf-test", ttl_seconds=60)
+def _service() -> JwtService:
+    return JwtService(secret="x" * 32, issuer="golf-test", ttl_seconds=60)
 
 
 def test_round_trip_token_returns_subject():
@@ -24,6 +24,6 @@ def test_verify_rejects_tampered_token():
 
 def test_verify_rejects_wrong_issuer():
     issued = _service().issue(subject="u_1")
-    other = JwtRepository(secret="x" * 32, issuer="other", ttl_seconds=60)
+    other = JwtService(secret="x" * 32, issuer="other", ttl_seconds=60)
     with pytest.raises(JwtVerifyError):
         other.verify(issued)

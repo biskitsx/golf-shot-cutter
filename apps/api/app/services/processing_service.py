@@ -4,11 +4,11 @@ from app.core.models.ids import SessionId
 from app.core.models.shot import Shot, ShotSource
 from app.core.models.value_objects import Confidence
 from app.core.models.events import SessionReady, ShotDetected
-from app.repository.clock import SystemClock
-from app.repository.id_generator import UlidIdGenerator
-from app.repository.mongo.session_repository import MongoSessionRepository
-from app.repository.mongo.shot_repository import MongoShotRepository
-from app.repository.queue.event_publisher_repository import RedisEventPublisherRepository
+from app.infrastructure.clock import SystemClock
+from app.infrastructure.id_generator import UlidIdGenerator
+from app.infrastructure.queue.redis_event_publisher import RedisEventPublisher
+from app.persistence.mongo.session_repository import MongoSessionRepository
+from app.persistence.mongo.shot_repository import MongoShotRepository
 
 
 class ShotCandidate(BaseModel):
@@ -28,7 +28,7 @@ class ProcessingService:
         *,
         sessions_repo: MongoSessionRepository,
         shots_repo: MongoShotRepository,
-        events: RedisEventPublisherRepository,
+        events: RedisEventPublisher,
         clock: SystemClock,
         ids: UlidIdGenerator,
     ) -> None:

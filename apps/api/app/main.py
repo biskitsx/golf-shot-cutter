@@ -14,7 +14,7 @@ def create_app(env: str = "production") -> FastAPI:
     async def lifespan(app: FastAPI):
         if env != "test":
             from app.core.container import Container
-            from app.repository.mongo.indexes import ensure_indexes
+            from app.persistence.mongo.indexes import ensure_indexes
 
             container = Container()
             # Ensure mongo indexes on startup

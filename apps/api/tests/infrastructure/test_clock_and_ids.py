@@ -1,7 +1,7 @@
 from datetime import UTC
 
-from app.repository.clock import SystemClock
-from app.repository.id_generator import UlidIdGenerator
+from app.infrastructure.clock import SystemClock
+from app.infrastructure.id_generator import UlidIdGenerator
 
 
 def test_system_clock_returns_aware_utc_now():

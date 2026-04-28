@@ -37,7 +37,7 @@ def _payload_for(e: DomainEvent) -> dict:
     return {}
 
 
-class RedisEventPublisherRepository:
+class RedisEventPublisher:
     def __init__(self, client: redis_async.Redis) -> None:
         self._client = client
 

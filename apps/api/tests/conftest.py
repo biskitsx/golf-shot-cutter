@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.core.container import Container
 from app.main import create_app
-from app.repository.auth.jwt_repository import JwtRepository
+from app.infrastructure.auth.jwt_service import JwtService
 from fakes.fake_clock import FakeClock
 from fakes.fake_id_generator import FakeIdGenerator
 from fakes.fake_publisher import FakeEventPublisher
@@ -40,7 +40,7 @@ def container():
     c.publisher_repo.override(FakeEventPublisher())
     c.clock.override(FakeClock(datetime(2026, 4, 28, tzinfo=UTC)))
     c.ids.override(FakeIdGenerator())
-    c.jwt_repo.override(JwtRepository(secret="x" * 32, issuer="golf-test", ttl_seconds=3600))
+    c.jwt_repo.override(JwtService(secret="x" * 32, issuer="golf-test", ttl_seconds=3600))
     c.wire(modules=_WIRING_MODULES)
     yield c
     c.unwire()

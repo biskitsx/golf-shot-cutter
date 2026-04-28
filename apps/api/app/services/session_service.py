@@ -7,13 +7,13 @@ from pydantic import BaseModel, Field
 from app.core.models.events import SessionProcessingStarted
 from app.core.models.ids import SessionId, UserId
 from app.core.models.session import Session, SessionStatus
-from app.repository.clock import SystemClock
-from app.repository.id_generator import UlidIdGenerator
-from app.repository.mongo.session_repository import MongoSessionRepository
-from app.repository.mongo.shot_repository import MongoShotRepository
-from app.repository.queue.event_publisher_repository import RedisEventPublisherRepository
-from app.repository.queue.job_queue_repository import CeleryJobQueueRepository, ProcessVideoJob
-from app.repository.r2.storage_repository import R2StorageRepository, SignedUrl
+from app.infrastructure.clock import SystemClock
+from app.infrastructure.id_generator import UlidIdGenerator
+from app.infrastructure.queue.celery_job_queue import CeleryJobQueue, ProcessVideoJob
+from app.infrastructure.queue.redis_event_publisher import RedisEventPublisher
+from app.infrastructure.storage.r2_storage import R2Storage, SignedUrl
+from app.persistence.mongo.session_repository import MongoSessionRepository
+from app.persistence.mongo.shot_repository import MongoShotRepository
 
 
 class CreateSessionInput(BaseModel):
@@ -57,9 +57,9 @@ class SessionService:
         *,
         sessions_repo: MongoSessionRepository,
         shots_repo: MongoShotRepository,
-        storage: R2StorageRepository,
-        queue: CeleryJobQueueRepository,
-        events: RedisEventPublisherRepository,
+        storage: R2Storage,
+        queue: CeleryJobQueue,
+        events: RedisEventPublisher,
         clock: SystemClock,
         ids: UlidIdGenerator,
     ) -> None:
