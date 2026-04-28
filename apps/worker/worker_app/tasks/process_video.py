@@ -54,8 +54,19 @@ async def _run(payload: dict) -> None:
 
                 clips_dir = os.path.join(workdir, "clips")
                 pipeline = Pipeline(
-                    audio_onset=LibrosaAudioOnsetDetector(),
-                    pose_verifier=MediaPipePoseVerifier(),
+                    audio_onset=LibrosaAudioOnsetDetector(
+                        delta=float(os.environ.get("AUDIO_DELTA", "0.15")),
+                        bandpass_low_hz=float(os.environ.get("AUDIO_BAND_LOW_HZ", "1500")),
+                        bandpass_high_hz=float(os.environ.get("AUDIO_BAND_HIGH_HZ", "8000")),
+                        min_strength_factor=float(os.environ.get("AUDIO_STRENGTH_FACTOR", "0.3")),
+                    ),
+                    pose_verifier=MediaPipePoseVerifier(
+                        min_pose_detection_rate=float(
+                            os.environ.get("POSE_MIN_DETECTION_RATE", "0.6")
+                        ),
+                        min_wrist_velocity=float(os.environ.get("POSE_MIN_WRIST_VELOCITY", "0.10")),
+                        min_velocity_peak_ratio=float(os.environ.get("POSE_PEAK_RATIO", "2.5")),
+                    ),
                     clip_cutter=FfmpegClipCutter(),
                 )
                 candidates = pipeline.run(
