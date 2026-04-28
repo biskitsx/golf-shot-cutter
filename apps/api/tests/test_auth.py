@@ -24,4 +24,4 @@ def test_me_returns_subject_when_authenticated(client: TestClient):
     client.post("/auth/login", json={"email": "dev@local", "password": "dev"})
     r = client.get("/auth/me")
     assert r.status_code == 200
-    assert r.json()["userId"] == "dev@local"
+    assert r.json()["data"]["userId"] == "dev@local"

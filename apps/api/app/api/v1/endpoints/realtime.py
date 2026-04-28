@@ -1,27 +1,27 @@
 import asyncio
 from collections.abc import AsyncIterator
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Request
+from redis.asyncio import Redis
 from sse_starlette.sse import EventSourceResponse
 
+from app.core.container import Container
 from app.deps.auth import current_user_id
+
 
 router = APIRouter(prefix="/sessions", tags=["realtime"])
 
 
-def _get_redis(request: Request):
-    c = request.app.state.container
-    return c.redis
-
-
 @router.get("/{session_id}/events")
+@inject
 async def stream_events(
     session_id: str,
     request: Request,
     _user_id: str = Depends(current_user_id),
+    redis: Redis = Depends(Provide[Container.redis]),
 ) -> EventSourceResponse:
-    redis_client = _get_redis(request)
-    pubsub = redis_client.pubsub()
+    pubsub = redis.pubsub()
     await pubsub.subscribe(f"session:{session_id}")
 
     async def _events() -> AsyncIterator[dict]:

@@ -8,10 +8,10 @@ def _login(client: TestClient) -> None:
 def test_upload_url_for_existing_session(client: TestClient):
     _login(client)
     create = client.post("/sessions", json={"originalFilename": "x.mp4"})
-    sid = create.json()["sessionId"]
+    sid = create.json()["data"]["sessionId"]
     r = client.post(f"/sessions/{sid}/upload-url")
     assert r.status_code == 200
-    body = r.json()
+    body = r.json()["data"]
     assert "url" in body
     assert "expiresAt" in body
 

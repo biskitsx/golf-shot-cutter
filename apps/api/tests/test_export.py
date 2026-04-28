@@ -8,7 +8,7 @@ def _login(client: TestClient) -> None:
 def test_export_requires_ready_session(client: TestClient):
     _login(client)
     create = client.post("/sessions", json={"originalFilename": "x.mp4"})
-    sid = create.json()["sessionId"]
+    sid = create.json()["data"]["sessionId"]
     # session is in UPLOADING, not READY → assert_editable fails → 409
     r = client.post(f"/sessions/{sid}/export")
     assert r.status_code == 409
@@ -21,14 +21,15 @@ def test_export_when_ready_returns_signed_get_url(client: TestClient):
 
     _login(client)
     create = client.post("/sessions", json={"originalFilename": "x.mp4"})
-    sid = create.json()["sessionId"]
+    sid = create.json()["data"]["sessionId"]
     container = client.app.state.container
-    s = container.sessions_repo._items[sid]  # noqa: SLF001
-    container.sessions_repo._items[sid] = s.model_copy(  # noqa: SLF001
+    sessions = container.sessions_repo()
+    s = sessions._items[sid]  # noqa: SLF001
+    sessions._items[sid] = s.model_copy(  # noqa: SLF001
         update={"status": SessionStatus.READY, "updated_at": datetime(2026, 4, 28, tzinfo=UTC)}
     )
     r = client.post(f"/sessions/{sid}/export")
     assert r.status_code == 200
-    body = r.json()
+    body = r.json()["data"]
     assert body["exportId"].startswith("exp_")
     assert "signedDownloadUrl" in body

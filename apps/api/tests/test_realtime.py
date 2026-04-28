@@ -29,7 +29,7 @@ async def test_sse_delivers_published_event(container_with_redis):
 
             async def _publish_after_delay():
                 await asyncio.sleep(0.5)
-                await container_with_redis.redis.publish(
+                await container_with_redis.redis().publish(
                     "session:ses_1",
                     json.dumps(
                         {

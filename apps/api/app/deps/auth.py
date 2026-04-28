@@ -1,6 +1,9 @@
-from fastapi import Cookie, HTTPException, Request
+from dependency_injector.wiring import Provide, inject
+from fastapi import Cookie, Depends, HTTPException
 
-from app.repository.auth.jwt_repository import JwtVerifyError
+from app.core.container import Container
+from app.repository.auth.jwt_repository import JwtRepository, JwtVerifyError
+
 
 _DEV_USERS = {"dev@local": "dev"}  # Plan 5 replaces with real user store
 
@@ -11,13 +14,15 @@ def authenticate(email: str, password: str) -> str | None:
     return None
 
 
-def current_user_id(request: Request, auth: str | None = Cookie(default=None)) -> str:
+@inject
+def current_user_id(
+    auth: str | None = Cookie(default=None),
+    jwt_repo: JwtRepository = Depends(Provide[Container.jwt_repo]),
+) -> str:
     if not auth:
         raise HTTPException(status_code=401, detail="not_authenticated")
-    container = request.app.state.container
-    jwt = container.jwt if hasattr(container, "jwt") else container.jwt_repo()
     try:
-        payload = jwt.verify(auth)
+        payload = jwt_repo.verify(auth)
     except JwtVerifyError as e:
         raise HTTPException(status_code=401, detail="invalid_token") from e
     return payload.subject

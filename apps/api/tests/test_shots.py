@@ -8,7 +8,7 @@ def _login(client: TestClient) -> None:
 def _ready_session_with_two_auto_shots(client: TestClient) -> str:
     """Helper: create session, mark session ready by directly seeding container."""
     create = client.post("/sessions", json={"originalFilename": "a.mp4"})
-    sid = create.json()["sessionId"]
+    sid = create.json()["data"]["sessionId"]
 
     from datetime import UTC, datetime
 
@@ -17,8 +17,8 @@ def _ready_session_with_two_auto_shots(client: TestClient) -> str:
     from app.core.models.value_objects import Confidence
 
     container = client.app.state.container
-    sessions = container.sessions_repo
-    shots = container.shots_repo
+    sessions = container.sessions_repo()
+    shots = container.shots_repo()
     s = sessions._items[sid]  # noqa: SLF001
     sessions._items[sid] = s.model_copy(  # noqa: SLF001
         update={"status": SessionStatus.READY, "shot_count": 2}
@@ -49,7 +49,7 @@ def test_update_shot_boundary(client: TestClient):
         json={"tStart": 7.0, "tEnd": 16.0},
     )
     assert r.status_code == 200
-    body = r.json()
+    body = r.json()["data"]
     assert body["tStart"] == 7.0
     assert body["tEnd"] == 16.0
 
@@ -72,7 +72,7 @@ def test_add_manual_shot(client: TestClient):
         json={"tImpact": 100.0, "tStart": 98.0, "tEnd": 105.0},
     )
     assert r.status_code == 201
-    body = r.json()
+    body = r.json()["data"]
     assert body["index"] == 3
     assert body["source"] == "manual"
 
@@ -82,7 +82,7 @@ def test_delete_shot(client: TestClient):
     sid = _ready_session_with_two_auto_shots(client)
     r = client.delete(f"/sessions/{sid}/shots/shot_1")
     assert r.status_code == 204
-    detail = client.get(f"/sessions/{sid}").json()
+    detail = client.get(f"/sessions/{sid}").json()["data"]
     assert {s["id"] for s in detail["shots"]} == {"shot_2"}
 
 
