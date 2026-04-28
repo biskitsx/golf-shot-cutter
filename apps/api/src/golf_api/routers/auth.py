@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from golf_api.deps.auth import authenticate, current_user_id, get_container
@@ -14,8 +14,18 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1)
 
 
+def _cookie_secure(request: Request) -> bool:
+    """True unless we're clearly in a local-dev / test scheme."""
+    return request.url.scheme == "https"
+
+
 @router.post("/login", status_code=204)
-async def login(req: LoginRequest, response: Response, container=Depends(get_container)) -> None:
+async def login(
+    req: LoginRequest,
+    request: Request,
+    response: Response,
+    container=Depends(get_container),
+) -> None:
     user_id = authenticate(req.email, req.password)
     if user_id is None:
         raise HTTPException(status_code=401, detail="invalid_credentials")
@@ -25,6 +35,7 @@ async def login(req: LoginRequest, response: Response, container=Depends(get_con
         token,
         httponly=True,
         samesite="lax",
+        secure=_cookie_secure(request),
         max_age=container.jwt._ttl,  # noqa: SLF001
     )
 
