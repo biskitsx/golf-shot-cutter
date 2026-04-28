@@ -11,6 +11,14 @@
     "indentWidth": 2
   },
   "files": {
-    "ignore": [".venv/**", "node_modules/**", ".nx/**", "dist/**"]
+    "ignore": [
+      ".venv/**",
+      "node_modules/**",
+      ".nx/**",
+      "dist/**",
+      ".import_linter_cache/**",
+      ".pytest_cache/**",
+      ".ruff_cache/**"
+    ]
   }
 }
