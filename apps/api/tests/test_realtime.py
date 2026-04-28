@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
-from golf_api.main import create_app
+from app.main import create_app
 
 
 def test_sse_unauthenticated_401(client_with_redis: TestClient):

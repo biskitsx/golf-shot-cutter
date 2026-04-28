@@ -1,14 +1,8 @@
 from fastapi import Cookie, HTTPException, Request
 
-from golf_api.deps.container import Container
 from app.repository.auth.jwt_repository import JwtVerifyError
 
-
 _DEV_USERS = {"dev@local": "dev"}  # Plan 5 replaces with real user store
-
-
-def get_container(request: Request) -> Container:
-    return request.app.state.container
 
 
 def authenticate(email: str, password: str) -> str | None:
@@ -20,9 +14,10 @@ def authenticate(email: str, password: str) -> str | None:
 def current_user_id(request: Request, auth: str | None = Cookie(default=None)) -> str:
     if not auth:
         raise HTTPException(status_code=401, detail="not_authenticated")
-    container: Container = get_container(request)
+    container = request.app.state.container
+    jwt = container.jwt if hasattr(container, "jwt") else container.jwt_repo()
     try:
-        payload = container.jwt.verify(auth)
+        payload = jwt.verify(auth)
     except JwtVerifyError as e:
         raise HTTPException(status_code=401, detail="invalid_token") from e
     return payload.subject

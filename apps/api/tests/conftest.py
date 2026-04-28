@@ -109,7 +109,7 @@ def container() -> _Container:
 
 @pytest.fixture
 def client(container) -> TestClient:
-    from golf_api.main import create_app
+    from app.main import create_app
 
     app = create_app(env="test")
     app.state.container = container
@@ -124,7 +124,7 @@ def container_with_redis(container) -> _Container:
 
 @pytest.fixture
 def client_with_redis(container_with_redis) -> TestClient:
-    from golf_api.main import create_app
+    from app.main import create_app
 
     app = create_app(env="test")
     app.state.container = container_with_redis
