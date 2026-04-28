@@ -14,7 +14,7 @@ from worker_app.container import WorkerContainer
 from worker_app.pipeline.audio_onset_librosa import LibrosaAudioOnsetDetector
 from worker_app.pipeline.clip_cutter_ffmpeg import FfmpegClipCutter
 from worker_app.pipeline.pipeline import Pipeline
-from worker_app.pipeline.pose_verifier_stub import StubPoseVerifier
+from worker_app.pipeline.pose_verifier_mediapipe import MediaPipePoseVerifier
 
 
 @shared_task(name=PROCESS_VIDEO_TASK)
@@ -55,7 +55,7 @@ async def _run(payload: dict) -> None:
                 clips_dir = os.path.join(workdir, "clips")
                 pipeline = Pipeline(
                     audio_onset=LibrosaAudioOnsetDetector(),
-                    pose_verifier=StubPoseVerifier(),
+                    pose_verifier=MediaPipePoseVerifier(),
                     clip_cutter=FfmpegClipCutter(),
                 )
                 candidates = pipeline.run(
