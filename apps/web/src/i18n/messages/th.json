@@ -38,6 +38,8 @@
     "addShot": "เพิ่มช็อต",
     "deleteShot": "ลบช็อต",
     "noShots": "ไม่พบช็อต — ลองเพิ่มด้วยตัวเอง",
-    "export": "Export ZIP"
+    "export": "Export ZIP",
+    "process": "ประมวลผลใหม่",
+    "refresh": "รีโหลด"
   }
 }

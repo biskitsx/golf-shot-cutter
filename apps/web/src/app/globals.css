@@ -8,9 +8,8 @@ body {
 body {
   background-color: #ffffff;
   color: #18181b; /* zinc-900 */
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
-    sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

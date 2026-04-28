@@ -38,6 +38,8 @@
     "addShot": "Add shot",
     "deleteShot": "Delete shot",
     "noShots": "No shots detected — try adding one manually",
-    "export": "Export ZIP"
+    "export": "Export ZIP",
+    "process": "Reprocess",
+    "refresh": "Refresh"
   }
 }

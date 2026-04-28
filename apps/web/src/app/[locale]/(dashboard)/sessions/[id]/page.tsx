@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { use } from "react";
 
@@ -10,6 +11,7 @@ import { ReviewTimeline } from "@/features/review/components/ReviewTimeline";
 import { VideoPlayer } from "@/features/review/components/VideoPlayer";
 import { SessionStatusBadge } from "@/features/sessions/components/SessionStatusBadge";
 import { useSessionQuery } from "@/features/sessions/hooks/useSessionQuery";
+import { useStartProcessingMutation } from "@/features/sessions/hooks/useStartProcessingMutation";
 import { ShotSidebarItem } from "@/features/shots/components/ShotSidebarItem";
 import { useAddManualShotMutation } from "@/features/shots/hooks/useAddManualShotMutation";
 
@@ -20,8 +22,10 @@ export default function SessionDetailPage({
 }) {
   const { id } = use(params);
   const t = useTranslations("review");
+  const qc = useQueryClient();
   const { data, isLoading } = useSessionQuery(id);
   const add = useAddManualShotMutation();
+  const startProcessing = useStartProcessingMutation();
   useRealtimeInvalidation(id);
 
   if (isLoading || !data) {
@@ -29,13 +33,32 @@ export default function SessionDetailPage({
   }
 
   const { session, shots } = data;
+  const processingDisabled =
+    startProcessing.isPending || session.status === "processing";
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">{t("title")}</h1>
-          <SessionStatusBadge status={session.status} />
+          <div className="flex items-center gap-2">
+            <SessionStatusBadge status={session.status} />
+            <Button
+              variant="outline"
+              disabled={processingDisabled}
+              onClick={() => startProcessing.mutate(id)}
+            >
+              {startProcessing.isPending ? "…" : t("process")}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                qc.invalidateQueries({ queryKey: ["sessions", id] });
+              }}
+            >
+              {t("refresh")}
+            </Button>
+          </div>
         </div>
         <VideoPlayer src={null /* signed GET URL retrieval is Plan 6 */} />
         <ReviewTimeline
