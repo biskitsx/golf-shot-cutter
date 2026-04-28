@@ -12,6 +12,6 @@ async def test_enqueue_records_send_call():
     def _capture(payload: dict) -> None:
         captured.append(payload)
 
-    queue = CeleryJobQueue(app)
+    queue = CeleryJobQueue(app, eager=True)
     await queue.enqueue_process_video(ProcessVideoJob(session_id="ses_1"))
     assert captured == [{"sessionId": "ses_1"}]
