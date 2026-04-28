@@ -75,7 +75,7 @@ class ProcessVideoUseCase:
                 )
             )
 
-        ready = session.mark_ready(shot_count=len(new_shots))
+        ready = session.mark_ready(shot_count=len(new_shots), now=now)
         await self._sessions.update(ready)
         await self._events.publish(
             SessionReady(
