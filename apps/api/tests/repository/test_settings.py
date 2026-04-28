@@ -33,5 +33,6 @@ def test_settings_missing_required_raises(monkeypatch):
         "JWT_ISSUER",
     ]:
         monkeypatch.delenv(var, raising=False)
+    # _env_file=None disables .env file loading so the test isolates env vars only.
     with pytest.raises(Exception):
-        Settings()
+        Settings(_env_file=None)

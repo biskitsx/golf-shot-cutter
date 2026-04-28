@@ -10,6 +10,7 @@ import { useRealtimeInvalidation } from "@/features/realtime/hooks/useRealtimeIn
 import { ReviewTimeline } from "@/features/review/components/ReviewTimeline";
 import { VideoPlayer } from "@/features/review/components/VideoPlayer";
 import { SessionStatusBadge } from "@/features/sessions/components/SessionStatusBadge";
+import { useRawVideoUrlQuery } from "@/features/sessions/hooks/useRawVideoUrlQuery";
 import { useSessionQuery } from "@/features/sessions/hooks/useSessionQuery";
 import { useStartProcessingMutation } from "@/features/sessions/hooks/useStartProcessingMutation";
 import { ShotSidebarItem } from "@/features/shots/components/ShotSidebarItem";
@@ -24,6 +25,7 @@ export default function SessionDetailPage({
   const t = useTranslations("review");
   const qc = useQueryClient();
   const { data, isLoading } = useSessionQuery(id);
+  const rawUrl = useRawVideoUrlQuery(id);
   const add = useAddManualShotMutation();
   const startProcessing = useStartProcessingMutation();
   useRealtimeInvalidation(id);
@@ -60,7 +62,7 @@ export default function SessionDetailPage({
             </Button>
           </div>
         </div>
-        <VideoPlayer src={null /* signed GET URL retrieval is Plan 6 */} />
+        <VideoPlayer src={rawUrl.data?.url ?? null} />
         <ReviewTimeline
           shots={shots}
           duration={session.durationSeconds || 60}

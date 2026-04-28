@@ -109,3 +109,14 @@ async def start_processing(
 ) -> ResponseSuccess:
     await service.start_processing(StartProcessingInput(session_id=session_id))
     return ResponseSuccess(data={"status": "queued"}, code=202)
+
+
+@router.get("/{session_id}/raw-url")
+@inject
+async def raw_video_url(
+    session_id: str,
+    _user_id: str = Depends(current_user_id),
+    service: SessionService = Depends(Provide[Container.session_service]),
+) -> ResponseSuccess:
+    signed = await service.get_raw_video_url(GetSessionWithShotsInput(session_id=session_id))
+    return ResponseSuccess(data={"url": signed.url, "expiresAt": signed.expires_at.isoformat()})

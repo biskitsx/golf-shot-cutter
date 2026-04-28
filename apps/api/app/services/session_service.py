@@ -101,6 +101,10 @@ class SessionService:
         session = await self._sessions.get(input.session_id)
         return await self._storage.signed_put_url(session.raw_video_key, content_type="video/mp4")
 
+    async def get_raw_video_url(self, input: GetSessionWithShotsInput) -> SignedUrl:
+        session = await self._sessions.get(input.session_id)
+        return await self._storage.signed_get_url(session.raw_video_key)
+
     async def start_processing(self, input: StartProcessingInput) -> None:
         session = await self._sessions.get(input.session_id)
         now = self._clock.now()
