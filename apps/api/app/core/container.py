@@ -110,5 +110,6 @@ class Container(containers.DeclarativeContainer):
         ExportService,
         sessions_repo=sessions_repo,
         storage=storage_repo,
+        queue=queue_repo,
         ids=ids,
     )
