@@ -10,6 +10,7 @@
     "allowJs": true,
     "noEmit": true,
     "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@golf/contracts": ["../../libs/contracts/src/index.ts"]
