@@ -52,11 +52,20 @@ def test_assert_editable_rejects_when_processing():
 
 def test_mark_processing_from_queued_succeeds():
     s = _make(status=SessionStatus.QUEUED)
-    moved = s.mark_processing()
+    now = datetime.now(UTC)
+    moved = s.mark_processing(now=now)
     assert moved.status is SessionStatus.PROCESSING
+
+
+def test_mark_processing_refreshes_updated_at():
+    s = _make(status=SessionStatus.QUEUED)
+    later = datetime(2030, 1, 1, tzinfo=UTC)
+    moved = s.mark_processing(now=later)
+    assert moved.updated_at == later
+    assert moved.updated_at != s.updated_at
 
 
 def test_mark_processing_from_ready_rejects():
     s = _make(status=SessionStatus.READY)
     with pytest.raises(InvalidStateTransitionError):
-        s.mark_processing()
+        s.mark_processing(now=datetime.now(UTC))

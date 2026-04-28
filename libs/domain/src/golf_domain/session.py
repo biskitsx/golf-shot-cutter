@@ -55,25 +55,27 @@ class Session(BaseModel):
                 f"Session must be READY to edit (current: {self.status})"
             )
 
-    def mark_processing(self) -> "Session":
+    def mark_processing(self, *, now: datetime) -> "Session":
         if self.status is not SessionStatus.QUEUED:
             raise InvalidStateTransitionError(f"Cannot mark processing from {self.status}")
-        return self.model_copy(update={"status": SessionStatus.PROCESSING})
+        return self.model_copy(update={"status": SessionStatus.PROCESSING, "updated_at": now})
 
-    def mark_ready(self, shot_count: int) -> "Session":
+    def mark_ready(self, shot_count: int, *, now: datetime) -> "Session":
         if self.status is not SessionStatus.PROCESSING:
             raise InvalidStateTransitionError(f"Cannot mark ready from {self.status}")
         return self.model_copy(
             update={
                 "status": SessionStatus.READY,
                 "shot_count": shot_count,
+                "updated_at": now,
             }
         )
 
-    def mark_failed(self, stage: str, message: str) -> "Session":
+    def mark_failed(self, stage: str, message: str, *, now: datetime) -> "Session":
         return self.model_copy(
             update={
                 "status": SessionStatus.FAILED,
                 "error": SessionError(stage=stage, message=message),
+                "updated_at": now,
             }
         )

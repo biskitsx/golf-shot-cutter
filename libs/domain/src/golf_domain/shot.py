@@ -39,14 +39,14 @@ class Shot(BaseModel):
             raise InvalidValueError("t_impact must be < t_end")
         return self
 
-    def adjust_boundary(self, *, t_start: float, t_end: float) -> "Shot":
+    def adjust_boundary(self, *, t_start: float, t_end: float, now: datetime) -> "Shot":
         if t_end - t_start <= 0:
             raise InvalidValueError("Shot duration must be positive")
         if not (t_start < self.t_impact < t_end):
             raise InvalidValueError(
                 f"Impact ({self.t_impact}) must lie within [{t_start}, {t_end}]"
             )
-        return self.model_copy(update={"t_start": t_start, "t_end": t_end})
+        return self.model_copy(update={"t_start": t_start, "t_end": t_end, "updated_at": now})
 
-    def attach_clip(self, clip_key: str) -> "Shot":
-        return self.model_copy(update={"clip_key": clip_key})
+    def attach_clip(self, clip_key: str, *, now: datetime) -> "Shot":
+        return self.model_copy(update={"clip_key": clip_key, "updated_at": now})

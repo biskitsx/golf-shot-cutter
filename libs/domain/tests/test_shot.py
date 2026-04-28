@@ -34,21 +34,30 @@ def test_shot_requires_t_start_before_impact_before_t_end():
 
 def test_adjust_boundary_updates_when_valid():
     s = _make()
-    moved = s.adjust_boundary(t_start=7.0, t_end=16.0)
+    now = datetime.now(UTC)
+    moved = s.adjust_boundary(t_start=7.0, t_end=16.0, now=now)
     assert moved.t_start == 7.0
     assert moved.t_end == 16.0
+
+
+def test_adjust_boundary_refreshes_updated_at():
+    s = _make()
+    later = datetime(2030, 1, 1, tzinfo=UTC)
+    moved = s.adjust_boundary(t_start=7.0, t_end=16.0, now=later)
+    assert moved.updated_at == later
+    assert moved.updated_at != s.updated_at
 
 
 def test_adjust_boundary_rejects_zero_duration():
     s = _make()
     with pytest.raises(InvalidValueError):
-        s.adjust_boundary(t_start=10.0, t_end=10.0)
+        s.adjust_boundary(t_start=10.0, t_end=10.0, now=datetime.now(UTC))
 
 
 def test_adjust_boundary_rejects_when_impact_outside_window():
     s = _make()
     with pytest.raises(InvalidValueError):
-        s.adjust_boundary(t_start=11.0, t_end=12.0)
+        s.adjust_boundary(t_start=11.0, t_end=12.0, now=datetime.now(UTC))
 
 
 def test_index_must_be_positive():
