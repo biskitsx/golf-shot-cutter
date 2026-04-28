@@ -9,5 +9,8 @@
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2
+  },
+  "files": {
+    "ignore": [".venv/**", "node_modules/**"]
   }
 }

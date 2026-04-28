@@ -1,0 +1,23 @@
+{
+  "name": "contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/contracts/src",
+  "tags": ["type:lib", "scope:contracts"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm vitest run", "cwd": "libs/contracts" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec biome check libs/contracts" }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "echo 'contracts: source-only, no build needed in Plan 1'"
+      }
+    }
+  }
+}
