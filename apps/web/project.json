@@ -1,0 +1,32 @@
+{
+  "name": "web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/web/src",
+  "tags": ["type:app", "scope:web"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm next build", "cwd": "apps/web" }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm next dev --port 3000", "cwd": "apps/web" }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm exec biome check apps/web/src" }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": { "command": "pnpm tsc --noEmit", "cwd": "apps/web" }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "echo 'web: no-new-tests rule applies'",
+        "cwd": "apps/web"
+      }
+    }
+  }
+}

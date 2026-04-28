@@ -1,0 +1,37 @@
+{
+  "name": "@golf/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "pnpm exec biome check src"
+  },
+  "dependencies": {
+    "next": "15.3.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@tanstack/react-query": "5.59.20",
+    "axios": "1.7.7",
+    "next-intl": "3.25.3",
+    "zod": "3.23.8",
+    "@golf/contracts": "workspace:*",
+    "clsx": "2.1.1",
+    "tailwind-merge": "2.5.4",
+    "class-variance-authority": "0.7.0",
+    "lucide-react": "0.453.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.6.3",
+    "tailwindcss": "^4.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "postcss": "8.4.49",
+    "@biomejs/biome": "1.9.4"
+  }
+}
