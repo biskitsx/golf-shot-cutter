@@ -162,7 +162,7 @@ class MediaPipePoseVerifier:
 
             pose_rate = detections / samples
             if pose_rate < self._min_pose_rate:
-                logger.debug(
+                logger.info(
                     "pose verifier: rejecting t=%.2fs (pose rate %.2f < %.2f)",
                     t_impact,
                     pose_rate,
@@ -177,7 +177,7 @@ class MediaPipePoseVerifier:
                 max(v_r, default=0.0),
             )
             if peak_v < self._min_wrist_v:
-                logger.debug(
+                logger.info(
                     "pose verifier: rejecting t=%.2fs (peak wrist v %.4f < %.4f)",
                     t_impact,
                     peak_v,
@@ -193,7 +193,7 @@ class MediaPipePoseVerifier:
                 if all_v:
                     median_v = float(_median(all_v))
                     if median_v > 1e-6 and peak_v / median_v < self._min_peak_ratio:
-                        logger.debug(
+                        logger.info(
                             "pose verifier: rejecting t=%.2fs (peak/median %.2f < %.2f)",
                             t_impact,
                             peak_v / median_v,

@@ -2,6 +2,7 @@
 
 import os
 import sys
+from pathlib import Path
 
 # macOS prefork-safety: cv2 + mediapipe pull in Apple Obj-C / Metal / OpenGL
 # code. Celery's default `prefork` pool calls fork() to spawn workers, which
@@ -11,6 +12,19 @@ import sys
 # dev-on-macOS concern only — Linux fork is unaffected.
 if sys.platform == "darwin":
     os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
+
+# Load apps/worker/.env into the process environment so tunables read via
+# `os.environ.get(...)` inside task code (e.g. AUDIO_DELTA, POSE_PEAK_RATIO)
+# pick up values from the .env file without needing to be `export`-ed in the
+# shell. Pydantic-Settings already pulls in python-dotenv as a transitive dep.
+try:
+    from dotenv import load_dotenv
+
+    _env_path = Path(__file__).resolve().parent.parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
+except ImportError:
+    pass
 
 from celery import Celery  # noqa: E402
 
