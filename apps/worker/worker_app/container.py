@@ -17,13 +17,16 @@ from app.repository.r2.storage_repository import R2StorageRepository
 from app.services.processing_service import ProcessingService
 
 
+TASK_MODULES = [
+    "worker_app.tasks.process_video",
+    "worker_app.tasks.generate_export_zip",
+]
+
+
 class WorkerContainer(containers.DeclarativeContainer):
-    wiring_config = containers.WiringConfiguration(
-        modules=[
-            "worker_app.tasks.process_video",
-            "worker_app.tasks.generate_export_zip",
-        ]
-    )
+    # Wiring is performed explicitly in make_celery() (worker_app/main.py) so that
+    # the container can be imported in tests without the task modules existing yet.
+    wiring_config = containers.WiringConfiguration(modules=[])
 
     settings = providers.Singleton(Settings)
 
