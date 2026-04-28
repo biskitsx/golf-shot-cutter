@@ -11,6 +11,24 @@ import type { ShotDto } from "@golf/contracts";
 import { useDeleteShotMutation } from "../hooks/useDeleteShotMutation";
 import { useUpdateShotBoundaryMutation } from "../hooks/useUpdateShotBoundaryMutation";
 
+interface ApiErrorBody {
+  error?: string;
+  message?: string;
+  detail?: unknown;
+}
+
+function readErrorMessage(err: unknown): string | null {
+  if (!err || typeof err !== "object") return null;
+  // axios-style error
+  const e = err as { response?: { data?: ApiErrorBody } };
+  const body = e.response?.data;
+  if (!body) return null;
+  if (typeof body.message === "string" && body.message) return body.message;
+  if (typeof body.detail === "string") return body.detail;
+  if (typeof body.error === "string") return body.error;
+  return null;
+}
+
 export function ShotSidebarItem({
   shot,
   sessionId,
@@ -23,6 +41,13 @@ export function ShotSidebarItem({
   const del = useDeleteShotMutation();
   const [tStart, setTStart] = useState(shot.tStart);
   const [tEnd, setTEnd] = useState(shot.tEnd);
+
+  const dirty = tStart !== shot.tStart || tEnd !== shot.tEnd;
+  // Domain invariant: t_start < t_impact < t_end. Mirror it client-side so user
+  // sees the constraint before hitting the API.
+  const localInvalid =
+    tStart >= shot.tImpact || tEnd <= shot.tImpact || tEnd <= tStart;
+  const serverError = update.isError ? readErrorMessage(update.error) : null;
 
   return (
     <div className="space-y-2 rounded-md border border-zinc-200 p-3">
@@ -48,13 +73,18 @@ export function ShotSidebarItem({
           onChange={(e) => setTEnd(Number(e.target.value))}
         />
       </div>
+      {(localInvalid || serverError) && (
+        <p className="text-xs text-red-600">
+          {localInvalid
+            ? `tStart < impact (${shot.tImpact}) < tEnd is required`
+            : serverError}
+        </p>
+      )}
       <div className="flex gap-2">
         <Button
           className="flex-1"
           variant="outline"
-          disabled={
-            (tStart === shot.tStart && tEnd === shot.tEnd) || update.isPending
-          }
+          disabled={!dirty || localInvalid || update.isPending}
           onClick={() =>
             update.mutate({ sessionId, shotId: shot.id, tStart, tEnd })
           }
