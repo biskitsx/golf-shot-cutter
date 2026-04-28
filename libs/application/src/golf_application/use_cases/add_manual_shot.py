@@ -42,7 +42,7 @@ class AddManualShotUseCase:
         session.assert_editable()
 
         existing = await self._shots.list_by_session(session.id)
-        next_index = len(existing) + 1
+        next_index = (max(s.index for s in existing) + 1) if existing else 1
         now = self._clock.now()
 
         shot = Shot(

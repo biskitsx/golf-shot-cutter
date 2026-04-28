@@ -88,3 +88,40 @@ async def test_delete_shot_removes_record():
     with pytest.raises(ShotNotFoundError):
         await shots.get(out.id)
     assert (await sessions.get("ses_1")).shot_count == 0
+
+
+async def test_add_manual_after_delete_uses_max_plus_one(monkeypatch):
+    """Regression: after deleting a middle shot, next add should not collide."""
+    sessions = InMemorySessionRepository()
+    shots = InMemoryShotRepository()
+    await sessions.add(_ready_session())
+
+    add = AddManualShotUseCase(
+        sessions=sessions,
+        shots=shots,
+        events=FakeEventPublisher(),
+        clock=FakeClock(datetime(2026, 4, 28, tzinfo=UTC)),
+        ids=FakeIdGenerator(),
+    )
+    s1 = await add.execute(AddManualShotInput(session_id="ses_1", t_impact=10, t_start=8, t_end=15))
+    s2 = await add.execute(
+        AddManualShotInput(session_id="ses_1", t_impact=20, t_start=18, t_end=25)
+    )
+    s3 = await add.execute(
+        AddManualShotInput(session_id="ses_1", t_impact=30, t_start=28, t_end=35)
+    )
+    assert [s1.index, s2.index, s3.index] == [1, 2, 3]
+
+    delete = DeleteShotUseCase(
+        sessions=sessions,
+        shots=shots,
+        events=FakeEventPublisher(),
+        clock=FakeClock(datetime(2026, 4, 28, tzinfo=UTC)),
+    )
+    await delete.execute(DeleteShotInput(session_id="ses_1", shot_id=s2.id))
+
+    s4 = await add.execute(
+        AddManualShotInput(session_id="ses_1", t_impact=40, t_start=38, t_end=45)
+    )
+    # Before fix: would be 3 (collides with s3). After fix: 4 (max + 1).
+    assert s4.index == 4
