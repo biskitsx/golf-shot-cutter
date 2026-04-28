@@ -1,0 +1,15 @@
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.venv
+**/.nx
+**/.import_linter_cache
+**/node_modules
+**/dist
+**/coverage
+.git
+docs
+docker-compose.dev.yml
+.env
+.env.local
