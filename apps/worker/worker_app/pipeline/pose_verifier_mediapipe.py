@@ -32,8 +32,6 @@ from mediapipe.tasks.python import vision
 logger = logging.getLogger(__name__)
 
 # Lite variant: small (~5.5MB), fast, good enough for golf-stance verification.
-# Heavy/full variants live at the same URL prefix with different folder names
-# if you ever want to swap up.
 DEFAULT_MODEL_URL = (
     "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
     "pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
@@ -56,7 +54,6 @@ def ensure_pose_model(model_url: str = DEFAULT_MODEL_URL) -> str:
     target = target_dir / "pose_landmarker_lite.task"
     if not target.exists():
         logger.info("downloading MediaPipe pose model → %s", target)
-        # Stream download with a sane timeout so we don't hang forever.
         with urllib.request.urlopen(model_url, timeout=60) as resp:
             target.write_bytes(resp.read())
         logger.info("MediaPipe pose model cached (%d bytes)", target.stat().st_size)
@@ -76,7 +73,6 @@ class MediaPipePoseVerifier:
         post_window_seconds: float = 0.3,
         min_pose_detection_rate: float = 0.5,
         min_wrist_velocity: float = 0.05,
-        min_velocity_peak_ratio: float = 1.0,
         model_path: str | None = None,
     ) -> None:
         self._sample_every = sample_every_n_frames
@@ -84,7 +80,6 @@ class MediaPipePoseVerifier:
         self._post = post_window_seconds
         self._min_pose_rate = min_pose_detection_rate
         self._min_wrist_v = min_wrist_velocity
-        self._min_peak_ratio = min_velocity_peak_ratio
         self._model_path = model_path
         # Lazy: first verify() call constructs the landmarker (and triggers
         # the model download if needed). Tests that hit the missing-video
@@ -170,12 +165,7 @@ class MediaPipePoseVerifier:
                 )
                 return False
 
-            v_l = _velocities(wrist_l)
-            v_r = _velocities(wrist_r)
-            peak_v = max(
-                max(v_l, default=0.0),
-                max(v_r, default=0.0),
-            )
+            peak_v = max(_peak_velocity(wrist_l), _peak_velocity(wrist_r))
             if peak_v < self._min_wrist_v:
                 logger.info(
                     "pose verifier: rejecting t=%.2fs (peak wrist v %.4f < %.4f)",
@@ -185,38 +175,15 @@ class MediaPipePoseVerifier:
                 )
                 return False
 
-            # peak/median ratio guards against gradual ambient motion (walking,
-            # adjusting grip). A real swing has a sharp velocity spike; standing
-            # still has uniform low velocity (ratio ≈ 1).
-            if self._min_peak_ratio > 1.0:
-                all_v = v_l + v_r
-                if all_v:
-                    median_v = float(_median(all_v))
-                    if median_v > 1e-6 and peak_v / median_v < self._min_peak_ratio:
-                        logger.info(
-                            "pose verifier: rejecting t=%.2fs (peak/median %.2f < %.2f)",
-                            t_impact,
-                            peak_v / median_v,
-                            self._min_peak_ratio,
-                        )
-                        return False
-
             return True
         finally:
             cap.release()
 
 
-def _velocities(positions: list[tuple[float, float]]) -> list[float]:
-    return [
+def _peak_velocity(positions: list[tuple[float, float]]) -> float:
+    if len(positions) < 2:
+        return 0.0
+    return max(
         ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5
         for a, b in zip(positions[:-1], positions[1:], strict=False)
-    ]
-
-
-def _median(xs: list[float]) -> float:
-    s = sorted(xs)
-    n = len(s)
-    if n == 0:
-        return 0.0
-    mid = n // 2
-    return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2
+    )
