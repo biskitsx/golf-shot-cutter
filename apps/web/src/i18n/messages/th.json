@@ -1,0 +1,43 @@
+{
+  "common": {
+    "appName": "Golf Shot Cutter",
+    "logIn": "เข้าสู่ระบบ",
+    "logOut": "ออกจากระบบ",
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "delete": "ลบ",
+    "loading": "กำลังโหลด...",
+    "error": "เกิดข้อผิดพลาด"
+  },
+  "auth": {
+    "email": "อีเมล",
+    "password": "รหัสผ่าน",
+    "submit": "เข้าสู่ระบบ",
+    "invalidCredentials": "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+  },
+  "sessions": {
+    "title": "เซสชัน",
+    "newSession": "เซสชันใหม่",
+    "empty": "ยังไม่มีเซสชัน — เริ่มจากอัปโหลดวิดีโอ",
+    "uploading": "กำลังอัปโหลด",
+    "queued": "อยู่ในคิว",
+    "processing": "กำลังประมวลผล",
+    "ready": "พร้อม",
+    "failed": "ล้มเหลว",
+    "shotCount": "{count} ช็อต"
+  },
+  "upload": {
+    "title": "อัปโหลดวิดีโอ",
+    "drop": "ลากวิดีโอมาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์",
+    "uploading": "กำลังอัปโหลด {percent}%",
+    "preRoll": "Pre-roll (วินาที)",
+    "postRoll": "Post-roll (วินาที)"
+  },
+  "review": {
+    "title": "ตรวจทานช็อต",
+    "addShot": "เพิ่มช็อต",
+    "deleteShot": "ลบช็อต",
+    "noShots": "ไม่พบช็อต — ลองเพิ่มด้วยตัวเอง",
+    "export": "Export ZIP"
+  }
+}
