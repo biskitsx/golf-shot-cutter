@@ -28,9 +28,11 @@ class Pipeline:
         clips_dir: str,
         pre_roll_seconds: float,
         post_roll_seconds: float,
+        audio_path: str | None = None,
     ) -> list[ShotCandidate]:
         os.makedirs(clips_dir, exist_ok=True)
-        onsets = self._audio.detect(source_video_path)
+        audio_source = audio_path or source_video_path
+        onsets = self._audio.detect(audio_source)
         verified: list[Onset] = [o for o in onsets if self._pose.verify(source_video_path, o.t)]
 
         candidates: list[ShotCandidate] = []
