@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "golf-application",
+    "golf-contracts",
     "golf-domain",
     "golf-infrastructure",
     "golf-shot-cutter",
@@ -548,6 +549,17 @@ requires-dist = [
     { name = "golf-domain", editable = "libs/domain" },
     { name = "pydantic", specifier = ">=2.9" },
 ]
+
+[[package]]
+name = "golf-contracts"
+version = "0.0.0"
+source = { editable = "libs/contracts/generated/python" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.9" }]
 
 [[package]]
 name = "golf-domain"
