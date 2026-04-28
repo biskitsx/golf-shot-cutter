@@ -39,6 +39,9 @@ def create_app(env: str = "production") -> FastAPI:
     app.include_router(shots_router)
     app.include_router(upload_router)
     app.include_router(export_router)
+    from .routers.realtime import router as realtime_router
+
+    app.include_router(realtime_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+import fakeredis.aioredis
 import pytest
 from fastapi.testclient import TestClient
 
@@ -84,4 +85,17 @@ def container() -> Container:
 def client(container) -> TestClient:
     app = create_app(env="test")
     app.state.container = container
+    return TestClient(app)
+
+
+@pytest.fixture
+def container_with_redis(container) -> Container:
+    container.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    return container
+
+
+@pytest.fixture
+def client_with_redis(container_with_redis) -> TestClient:
+    app = create_app(env="test")
+    app.state.container = container_with_redis
     return TestClient(app)
