@@ -1,8 +1,20 @@
 """Celery worker bootstrap. Container is wired before tasks are discovered."""
 
-from celery import Celery
+import os
+import sys
 
-from worker_app.container import TASK_MODULES, WorkerContainer
+# macOS prefork-safety: cv2 + mediapipe pull in Apple Obj-C / Metal / OpenGL
+# code. Celery's default `prefork` pool calls fork() to spawn workers, which
+# crashes (SIGABRT) when an Obj-C class's `+initialize` was mid-flight in a
+# parent thread. Setting this env var BEFORE any module that triggers Obj-C
+# initialization is loaded is the documented Apple workaround. This is a
+# dev-on-macOS concern only — Linux fork is unaffected.
+if sys.platform == "darwin":
+    os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
+
+from celery import Celery  # noqa: E402
+
+from worker_app.container import TASK_MODULES, WorkerContainer  # noqa: E402
 
 
 def make_celery() -> Celery:
