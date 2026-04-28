@@ -17,7 +17,7 @@ def test_export_requires_ready_session(client: TestClient):
 def test_export_when_ready_returns_signed_get_url(client: TestClient):
     from datetime import UTC, datetime
 
-    from golf_domain.session import SessionStatus
+    from app.core.models.session import SessionStatus
 
     _login(client)
     create = client.post("/sessions", json={"originalFilename": "x.mp4"})

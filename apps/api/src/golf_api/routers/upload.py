@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from golf_api.deps.auth import current_user_id, get_container
-from golf_application.use_cases.request_signed_upload_url import (
+from app.services.session_service import (
     RequestSignedUploadUrlInput,
 )
 

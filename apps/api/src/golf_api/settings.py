@@ -1,3 +1,3 @@
-from golf_infrastructure.settings import Settings
+from app.core.config import Settings
 
 __all__ = ["Settings"]

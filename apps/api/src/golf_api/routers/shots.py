@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, status
 
 from golf_api.deps.auth import current_user_id, get_container
 from golf_api.routers.sessions import _shot_dto
-from golf_application.use_cases.add_manual_shot import AddManualShotInput
-from golf_application.use_cases.delete_shot import DeleteShotInput
-from golf_application.use_cases.update_shot_boundary import (
+from app.services.shot_service import AddManualShotInput
+from app.services.shot_service import DeleteShotInput
+from app.services.shot_service import (
     UpdateShotBoundaryInput,
 )
 from golf_contracts import (

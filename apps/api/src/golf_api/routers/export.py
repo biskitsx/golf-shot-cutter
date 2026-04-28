@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from golf_api.deps.auth import current_user_id, get_container
-from golf_application.use_cases.export_session_zip import (
+from app.services.export_service import (
     ExportSessionZipInput,
 )
 

@@ -12,9 +12,9 @@ def _ready_session_with_two_auto_shots(client: TestClient) -> str:
 
     from datetime import UTC, datetime
 
-    from golf_domain.session import SessionStatus
-    from golf_domain.shot import Shot, ShotSource
-    from golf_domain.value_objects import Confidence
+    from app.core.models.session import SessionStatus
+    from app.core.models.shot import Shot, ShotSource
+    from app.core.models.value_objects import Confidence
 
     container = client.app.state.container
     sessions = container.sessions_repo

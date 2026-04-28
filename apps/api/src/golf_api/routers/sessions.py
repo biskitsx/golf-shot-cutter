@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
 from golf_api.deps.auth import current_user_id, get_container
-from golf_application.use_cases.create_session import CreateSessionInput
-from golf_application.use_cases.get_session_with_shots import (
+from app.services.session_service import CreateSessionInput
+from app.services.session_service import (
     GetSessionWithShotsInput,
 )
-from golf_application.use_cases.list_sessions import ListSessionsInput
-from golf_application.use_cases.start_processing import StartProcessingInput
+from app.services.session_service import ListSessionsInput
+from app.services.session_service import StartProcessingInput
 from golf_contracts import (
     CreateSessionRequest,
     CreateSessionResponse,

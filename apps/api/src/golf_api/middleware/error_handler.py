@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from golf_application.errors import (
+from app.services.errors import (
     ApplicationError,
     SessionNotFoundError,
     ShotNotFoundError,
 )
-from golf_domain.errors import (
+from app.core.models.errors import (
     DomainError,
     InvalidStateTransitionError,
     InvalidValueError,

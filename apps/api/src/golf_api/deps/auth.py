@@ -1,7 +1,7 @@
 from fastapi import Cookie, HTTPException, Request
 
 from golf_api.deps.container import Container
-from golf_infrastructure.auth.jwt_service import JwtVerifyError
+from app.repository.auth.jwt_repository import JwtVerifyError
 
 
 _DEV_USERS = {"dev@local": "dev"}  # Plan 5 replaces with real user store
