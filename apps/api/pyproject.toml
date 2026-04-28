@@ -7,21 +7,21 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "sse-starlette>=2.1",
     "python-multipart>=0.0.12",
-    "golf-domain",
-    "golf-application",
-    "golf-infrastructure",
-    "golf-contracts"
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "dependency-injector>=4.42",
+    "motor>=3.6",
+    "boto3>=1.35",
+    "celery>=5.4",
+    "redis>=5.1",
+    "python-jose[cryptography]>=3.3",
+    "python-ulid>=2.7",
+    "structlog>=24.4",
 ]
-
-[tool.uv.sources]
-golf-domain = { workspace = true }
-golf-application = { workspace = true }
-golf-infrastructure = { workspace = true }
-golf-contracts = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/golf_api"]
+packages = ["app"]
