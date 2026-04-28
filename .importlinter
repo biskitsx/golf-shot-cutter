@@ -1,15 +1,18 @@
-# Plan 1 scope: golf_domain + golf_application only.
-# Plan 2 will add golf_infrastructure, golf_api, golf_worker — restore them
-# (and the corresponding layer rows) when those packages exist.
+# Plan 2 scope: golf_domain + golf_application + golf_infrastructure + golf_api.
+# apps/worker arrives in Plan 3; restore that row of the layered contract then.
 
 [importlinter]
 root_packages =
     golf_domain
     golf_application
+    golf_infrastructure
+    golf_api
 
 [importlinter:contract:layered]
 name = Clean Architecture layered dependency
 type = layers
 layers =
+    golf_api
+    golf_infrastructure
     golf_application
     golf_domain
