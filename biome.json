@@ -11,6 +11,6 @@
     "indentWidth": 2
   },
   "files": {
-    "ignore": [".venv/**", "node_modules/**"]
+    "ignore": [".venv/**", "node_modules/**", ".nx/**", "dist/**"]
   }
 }

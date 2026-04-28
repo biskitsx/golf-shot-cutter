@@ -8,3 +8,7 @@ __pycache__/
 .env.local
 *.log
 .DS_Store
+.nx/
+dist/
+.pytest_cache/
+.ruff_cache/
