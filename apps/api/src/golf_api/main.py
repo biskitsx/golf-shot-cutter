@@ -7,6 +7,7 @@ from .deps.container import build_container, shutdown_container
 from .middleware.error_handler import install_error_handlers
 from .middleware.request_id import RequestIdMiddleware
 from .routers.auth import router as auth_router
+from .routers.sessions import router as sessions_router
 from .settings import Settings
 
 
@@ -29,6 +30,7 @@ def create_app(env: str = "production") -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     install_error_handlers(app)
     app.include_router(auth_router)
+    app.include_router(sessions_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
