@@ -59,6 +59,10 @@ class AddManualShotUseCase:
             updated_at=now,
         )
         await self._shots.add(shot)
+        updated_session = session.model_copy(
+            update={"shot_count": session.shot_count + 1, "updated_at": now}
+        )
+        await self._sessions.update(updated_session)
         await self._events.publish(
             ShotDetected(
                 session_id=session.id,

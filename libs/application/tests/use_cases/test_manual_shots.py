@@ -58,6 +58,7 @@ async def test_add_manual_shot_assigns_next_index():
     assert out1.index == 1
     assert out2.index == 2
     assert out1.source is ShotSource.MANUAL
+    assert (await sessions.get("ses_1")).shot_count == 2
 
 
 async def test_delete_shot_removes_record():
@@ -76,8 +77,14 @@ async def test_delete_shot_removes_record():
         AddManualShotInput(session_id="ses_1", t_impact=10.0, t_start=8.0, t_end=15.0)
     )
 
-    delete = DeleteShotUseCase(sessions=sessions, shots=shots, events=FakeEventPublisher())
+    delete = DeleteShotUseCase(
+        sessions=sessions,
+        shots=shots,
+        events=FakeEventPublisher(),
+        clock=FakeClock(datetime(2026, 4, 27, tzinfo=UTC)),
+    )
     await delete.execute(DeleteShotInput(session_id="ses_1", shot_id=out.id))
 
     with pytest.raises(ShotNotFoundError):
         await shots.get(out.id)
+    assert (await sessions.get("ses_1")).shot_count == 0
