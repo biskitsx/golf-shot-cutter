@@ -36,4 +36,4 @@ target-version = "py311"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["apps/api/tests"]
-pythonpath = ["apps/api/tests", "apps/api/src"]
+pythonpath = ["apps/api/tests"]
