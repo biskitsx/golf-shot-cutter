@@ -1,0 +1,28 @@
+[project]
+name = "golf-infrastructure"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "motor>=3.6",
+    "boto3>=1.35",
+    "celery>=5.4",
+    "redis>=5.1",
+    "python-jose[cryptography]>=3.3",
+    "python-ulid>=2.7",
+    "structlog>=24.4",
+    "golf-domain",
+    "golf-application"
+]
+
+[tool.uv.sources]
+golf-domain = { workspace = true }
+golf-application = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/golf_infrastructure"]
