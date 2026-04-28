@@ -31,9 +31,14 @@ def create_app(env: str = "production") -> FastAPI:
     install_error_handlers(app)
     from .routers.shots import router as shots_router
 
+    from .routers.upload import router as upload_router
+    from .routers.export import router as export_router
+
     app.include_router(auth_router)
     app.include_router(sessions_router)
     app.include_router(shots_router)
+    app.include_router(upload_router)
+    app.include_router(export_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
