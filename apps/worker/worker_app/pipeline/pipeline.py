@@ -1,5 +1,6 @@
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 from app.services.processing_service import ShotCandidate
 
@@ -19,11 +20,13 @@ class Pipeline:
         pose_verifier: PoseVerifier,
         clip_cutter: ClipCutter,
         max_clip_overlap_fraction: float = 0.5,
+        pose_max_workers: int = 4,
     ) -> None:
         self._audio = audio_onset
         self._pose = pose_verifier
         self._cutter = clip_cutter
         self._max_overlap = max_clip_overlap_fraction
+        self._pose_workers = max(1, pose_max_workers)
 
     def run(
         self,
@@ -38,7 +41,7 @@ class Pipeline:
         os.makedirs(clips_dir, exist_ok=True)
         audio_source = audio_path or source_video_path
         onsets = self._audio.detect(audio_source)
-        verified: list[Onset] = [o for o in onsets if self._pose.verify(source_video_path, o.t)]
+        verified = self._verify_onsets_parallel(source_video_path, onsets)
         verified = _dedupe_overlapping(
             verified,
             pre_roll_seconds=pre_roll_seconds,
@@ -68,6 +71,19 @@ class Pipeline:
                 )
             )
         return candidates
+
+    def _verify_onsets_parallel(self, source_video_path: str, onsets: list[Onset]) -> list[Onset]:
+        if not onsets:
+            return []
+        if self._pose_workers <= 1 or len(onsets) <= 1:
+            return [o for o in onsets if self._pose.verify(source_video_path, o.t)]
+
+        def _verify(o: Onset) -> tuple[Onset, bool]:
+            return o, self._pose.verify(source_video_path, o.t)
+
+        with ThreadPoolExecutor(max_workers=self._pose_workers) as ex:
+            results = list(ex.map(_verify, onsets))
+        return [o for o, ok in results if ok]
 
 
 def _dedupe_overlapping(

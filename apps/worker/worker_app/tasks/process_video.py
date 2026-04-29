@@ -64,6 +64,7 @@ async def _run(payload: dict) -> None:
                     max_clip_overlap_fraction=float(
                         os.environ.get("PIPELINE_MAX_OVERLAP_FRACTION", "0.5")
                     ),
+                    pose_max_workers=int(os.environ.get("PIPELINE_POSE_WORKERS", "4")),
                 )
                 candidates = pipeline.run(
                     session_id=session_id,
