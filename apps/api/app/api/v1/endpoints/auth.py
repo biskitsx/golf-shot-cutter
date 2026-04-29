@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from app.core.container import Container
 from app.core.schemas.responses import ResponseSuccess
 from app.deps.auth import authenticate, current_user_id
-from app.repository.auth.jwt_repository import JwtRepository
+from app.infrastructure.auth.jwt_service import JwtService
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -27,7 +27,7 @@ async def login(
     req: LoginRequest,
     request: Request,
     response: Response,
-    jwt_repo: JwtRepository = Depends(Provide[Container.jwt_repo]),
+    jwt_repo: JwtService = Depends(Provide[Container.jwt_repo]),
 ) -> None:
     user_id = authenticate(req.email, req.password)
     if user_id is None:

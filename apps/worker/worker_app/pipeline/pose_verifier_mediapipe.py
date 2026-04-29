@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import urllib.request
 from pathlib import Path
 
@@ -81,21 +82,26 @@ class MediaPipePoseVerifier:
         self._min_pose_rate = min_pose_detection_rate
         self._min_wrist_v = min_wrist_velocity
         self._model_path = model_path
-        # Lazy: first verify() call constructs the landmarker (and triggers
-        # the model download if needed). Tests that hit the missing-video
-        # path can run without network.
-        self._landmarker: vision.PoseLandmarker | None = None
+        # MediaPipe Tasks PoseLandmarker is NOT thread-safe; each calling
+        # thread gets its own instance via thread-local storage. The model
+        # file is shared (~5MB), but each thread builds its own inference
+        # graph. First verify() call in each thread triggers construction
+        # (and model download if needed). Tests that hit the missing-video
+        # path don't construct a landmarker at all.
+        self._tlocal = threading.local()
 
     def __del__(self) -> None:
         try:
-            if self._landmarker is not None:
-                self._landmarker.close()
+            existing = getattr(self._tlocal, "landmarker", None)
+            if existing is not None:
+                existing.close()
         except Exception:
             pass
 
     def _get_landmarker(self) -> vision.PoseLandmarker:
-        if self._landmarker is not None:
-            return self._landmarker
+        existing = getattr(self._tlocal, "landmarker", None)
+        if existing is not None:
+            return existing
         path = self._model_path or ensure_pose_model()
         base_options = mp_python.BaseOptions(model_asset_path=path)
         options = vision.PoseLandmarkerOptions(
@@ -103,8 +109,9 @@ class MediaPipePoseVerifier:
             running_mode=vision.RunningMode.IMAGE,
             num_poses=1,
         )
-        self._landmarker = vision.PoseLandmarker.create_from_options(options)
-        return self._landmarker
+        landmarker = vision.PoseLandmarker.create_from_options(options)
+        self._tlocal.landmarker = landmarker
+        return landmarker
 
     def verify(self, video_path: str, t_impact: float) -> bool:
         cap = cv2.VideoCapture(video_path)

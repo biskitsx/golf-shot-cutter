@@ -14,7 +14,7 @@ class JwtPayload(BaseModel):
     expires_at: datetime
 
 
-class JwtRepository:
+class JwtService:
     ALGORITHM = "HS256"
 
     def __init__(self, *, secret: str, issuer: str, ttl_seconds: int) -> None:

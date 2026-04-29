@@ -11,7 +11,7 @@ class SignedUrl(BaseModel):
     expires_at: datetime
 
 
-class R2StorageRepository:
+class R2Storage:
     def __init__(
         self,
         *,

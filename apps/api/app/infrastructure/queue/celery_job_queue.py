@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.core.models.ids import ExportId, SessionId
 
-from .celery_app import GENERATE_EXPORT_ZIP_TASK, PROCESS_VIDEO_TASK
+from app.infrastructure.queue.celery_app import GENERATE_EXPORT_ZIP_TASK, PROCESS_VIDEO_TASK
 
 
 class ProcessVideoJob(BaseModel):
@@ -17,7 +17,7 @@ class GenerateExportZipJob(BaseModel):
     export_id: ExportId
 
 
-class CeleryJobQueueRepository:
+class CeleryJobQueue:
     def __init__(self, app: Celery, *, eager: bool = False) -> None:
         self._app = app
         self._eager = eager

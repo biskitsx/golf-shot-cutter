@@ -5,8 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { ShotWithClip } from "@/features/sessions/hooks/useSessionQuery";
 import { formatSeconds } from "@/lib/utils";
-import type { ShotDto } from "@golf/contracts";
 
 import { useDeleteShotMutation } from "../hooks/useDeleteShotMutation";
 import { useUpdateShotBoundaryMutation } from "../hooks/useUpdateShotBoundaryMutation";
@@ -19,7 +19,6 @@ interface ApiErrorBody {
 
 function readErrorMessage(err: unknown): string | null {
   if (!err || typeof err !== "object") return null;
-  // axios-style error
   const e = err as { response?: { data?: ApiErrorBody } };
   const body = e.response?.data;
   if (!body) return null;
@@ -33,7 +32,7 @@ export function ShotSidebarItem({
   shot,
   sessionId,
 }: {
-  shot: ShotDto;
+  shot: ShotWithClip;
   sessionId: string;
 }) {
   const t = useTranslations("review");
@@ -43,22 +42,37 @@ export function ShotSidebarItem({
   const [tEnd, setTEnd] = useState(shot.tEnd);
 
   const dirty = tStart !== shot.tStart || tEnd !== shot.tEnd;
-  // Domain invariant: t_start < t_impact < t_end. Mirror it client-side so user
-  // sees the constraint before hitting the API.
   const localInvalid =
     tStart >= shot.tImpact || tEnd <= shot.tImpact || tEnd <= tStart;
   const serverError = update.isError ? readErrorMessage(update.error) : null;
 
   return (
-    <div className="space-y-2 rounded-md border border-zinc-200 p-3">
+    <div className="space-y-2 rounded-md border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">#{shot.index}</span>
-        <span className="text-xs text-zinc-500">{shot.source}</span>
+        <span className="text-xs text-muted-foreground">{shot.source}</span>
       </div>
-      <p className="text-xs text-zinc-600">
+
+      {shot.clipUrl ? (
+        <video
+          src={shot.clipUrl}
+          controls
+          preload="metadata"
+          className="aspect-video w-full rounded-md bg-black"
+        >
+          <track kind="captions" />
+        </video>
+      ) : (
+        <div className="flex aspect-video w-full items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+          ยังไม่มีคลิป (clip_key ว่าง)
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">
         impact: {formatSeconds(shot.tImpact)} · conf:{" "}
         {(shot.confidence * 100).toFixed(0)}%
       </p>
+
       <div className="grid grid-cols-2 gap-2">
         <Input
           type="number"

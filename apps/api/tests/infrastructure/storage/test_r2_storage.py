@@ -2,7 +2,7 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from app.repository.r2.storage_repository import R2StorageRepository
+from app.infrastructure.storage.r2_storage import R2Storage
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def s3_setup():
 
 
 async def test_signed_put_url_contains_key_and_expiry(s3_setup):
-    gw = R2StorageRepository(
+    gw = R2Storage(
         endpoint=None,  # use default for moto
         access_key="ak",
         secret_key="sk",
@@ -33,7 +33,7 @@ async def test_signed_put_url_contains_key_and_expiry(s3_setup):
 
 
 async def test_signed_get_url_returns_signed(s3_setup):
-    gw = R2StorageRepository(
+    gw = R2Storage(
         endpoint=None,
         access_key="ak",
         secret_key="sk",
@@ -47,7 +47,7 @@ async def test_signed_get_url_returns_signed(s3_setup):
 
 async def test_delete_object_removes_from_bucket(s3_setup):
     s3_setup.put_object(Bucket="golf-test", Key="clips/x.mp4", Body=b"hello")
-    gw = R2StorageRepository(
+    gw = R2Storage(
         endpoint=None,
         access_key="ak",
         secret_key="sk",

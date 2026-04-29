@@ -1,13 +1,10 @@
 from pydantic import BaseModel
 
 from app.core.models.ids import SessionId
-from app.repository.id_generator import UlidIdGenerator
-from app.repository.mongo.session_repository import MongoSessionRepository
-from app.repository.queue.job_queue_repository import (
-    CeleryJobQueueRepository,
-    GenerateExportZipJob,
-)
-from app.repository.r2.storage_repository import R2StorageRepository
+from app.infrastructure.id_generator import UlidIdGenerator
+from app.infrastructure.queue.celery_job_queue import CeleryJobQueue, GenerateExportZipJob
+from app.infrastructure.storage.r2_storage import R2Storage
+from app.persistence.mongo.session_repository import MongoSessionRepository
 
 
 class ExportSessionZipInput(BaseModel):
@@ -24,8 +21,8 @@ class ExportService:
         self,
         *,
         sessions_repo: MongoSessionRepository,
-        storage: R2StorageRepository,
-        queue: CeleryJobQueueRepository,
+        storage: R2Storage,
+        queue: CeleryJobQueue,
         ids: UlidIdGenerator,
     ) -> None:
         self._sessions = sessions_repo

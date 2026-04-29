@@ -4,12 +4,12 @@ from datetime import UTC, datetime
 import fakeredis.aioredis
 
 from app.core.models.events import SessionReady, ShotDetected
-from app.repository.queue.event_publisher_repository import RedisEventPublisherRepository
+from app.infrastructure.queue.redis_event_publisher import RedisEventPublisher
 
 
 async def test_publishes_shot_detected_to_session_channel():
     r = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    pub = RedisEventPublisherRepository(r)
+    pub = RedisEventPublisher(r)
     pubsub = r.pubsub()
     await pubsub.subscribe("session:ses_1")
 
@@ -37,7 +37,7 @@ async def test_publishes_shot_detected_to_session_channel():
 
 async def test_publishes_session_ready():
     r = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    pub = RedisEventPublisherRepository(r)
+    pub = RedisEventPublisher(r)
     pubsub = r.pubsub()
     await pubsub.subscribe("session:ses_1")
     await pub.publish(

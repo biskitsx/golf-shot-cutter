@@ -5,7 +5,7 @@ from mongomock_motor import AsyncMongoMockClient
 
 from app.services.errors import SessionNotFoundError
 from app.core.models.session import Session, SessionStatus
-from app.repository.mongo.session_repository import MongoSessionRepository
+from app.persistence.mongo.session_repository import MongoSessionRepository
 
 
 def _make(id: str = "ses_1", user_id: str | None = None) -> Session:

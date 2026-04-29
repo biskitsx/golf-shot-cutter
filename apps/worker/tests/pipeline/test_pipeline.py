@@ -127,3 +127,55 @@ def test_pipeline_returns_empty_when_no_onsets(tmp_path):
         post_roll_seconds=5.0,
     )
     assert candidates == []
+
+
+def test_pipeline_merges_overlapping_clip_windows(tmp_path):
+    """Two onsets ~1s apart with 7s clip windows overlap heavily — should
+    collapse to one (the higher-confidence one)."""
+    audio = FakeAudioDetector(
+        [
+            Onset(t=9.0, confidence=0.7),
+            Onset(t=10.0, confidence=0.95),
+        ]
+    )
+    cutter = FakeClipCutter()
+    pipeline = Pipeline(
+        audio_onset=audio,
+        pose_verifier=FakePoseVerifier(accept_all=True),
+        clip_cutter=cutter,
+    )
+    candidates = pipeline.run(
+        session_id="ses_1",
+        source_video_path="/tmp/v.mp4",
+        clips_dir=str(tmp_path / "clips"),
+        pre_roll_seconds=2.0,
+        post_roll_seconds=5.0,
+    )
+    assert len(candidates) == 1
+    # Higher-confidence onset wins.
+    assert candidates[0].t_impact == 10.0
+    # Cutter only invoked once.
+    assert len(cutter.calls) == 1
+
+
+def test_pipeline_keeps_separated_onsets(tmp_path):
+    """Onsets >7s apart with 7s clip windows don't overlap → keep both."""
+    audio = FakeAudioDetector(
+        [
+            Onset(t=10.0, confidence=0.8),
+            Onset(t=20.0, confidence=0.8),
+        ]
+    )
+    pipeline = Pipeline(
+        audio_onset=audio,
+        pose_verifier=FakePoseVerifier(accept_all=True),
+        clip_cutter=FakeClipCutter(),
+    )
+    candidates = pipeline.run(
+        session_id="ses_1",
+        source_video_path="/tmp/v.mp4",
+        clips_dir=str(tmp_path / "clips"),
+        pre_roll_seconds=2.0,
+        post_roll_seconds=5.0,
+    )
+    assert len(candidates) == 2

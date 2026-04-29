@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api-client";
 
+export type ShotWithClip = ShotDto & { clipUrl: string | null };
+
 interface SessionDetailResponse {
-  data: { session: SessionDto; shots: ShotDto[] };
+  data: { session: SessionDto; shots: ShotWithClip[] };
 }
 
 export function useSessionQuery(sessionId: string) {

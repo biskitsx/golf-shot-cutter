@@ -6,7 +6,7 @@ import zipfile
 
 from celery import shared_task
 
-from app.repository.queue.celery_app import GENERATE_EXPORT_ZIP_TASK
+from app.infrastructure.queue.celery_app import GENERATE_EXPORT_ZIP_TASK
 from worker_app.container import WorkerContainer
 
 
