@@ -54,9 +54,16 @@ async def _run(payload: dict) -> None:
 
                 clips_dir = os.path.join(workdir, "clips")
                 pipeline = Pipeline(
-                    audio_onset=LibrosaAudioOnsetDetector(),
+                    audio_onset=LibrosaAudioOnsetDetector(
+                        min_separation_seconds=float(
+                            os.environ.get("AUDIO_MIN_SEPARATION_SECONDS", "2.0")
+                        ),
+                    ),
                     pose_verifier=MediaPipePoseVerifier(),
                     clip_cutter=FfmpegClipCutter(),
+                    max_clip_overlap_fraction=float(
+                        os.environ.get("PIPELINE_MAX_OVERLAP_FRACTION", "0.5")
+                    ),
                 )
                 candidates = pipeline.run(
                     session_id=session_id,

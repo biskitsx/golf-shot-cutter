@@ -15,7 +15,7 @@ class LibrosaAudioOnsetDetector:
         *,
         sr: int = 22050,
         hop_length: int = 512,
-        min_separation_seconds: float = 0.5,
+        min_separation_seconds: float = 2.0,
         delta: float = 0.07,
     ) -> None:
         self._sr = sr
