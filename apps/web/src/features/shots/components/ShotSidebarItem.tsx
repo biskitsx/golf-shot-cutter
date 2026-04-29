@@ -9,6 +9,7 @@ import type { ShotWithClip } from "@/features/sessions/hooks/useSessionQuery";
 import { formatSeconds } from "@/lib/utils";
 
 import { useDeleteShotMutation } from "../hooks/useDeleteShotMutation";
+import { useGetPoseClipMutation } from "../hooks/useGetPoseClipMutation";
 import { useUpdateShotBoundaryMutation } from "../hooks/useUpdateShotBoundaryMutation";
 
 interface ApiErrorBody {
@@ -38,8 +39,33 @@ export function ShotSidebarItem({
   const t = useTranslations("review");
   const update = useUpdateShotBoundaryMutation();
   const del = useDeleteShotMutation();
+  const poseClip = useGetPoseClipMutation();
   const [tStart, setTStart] = useState(shot.tStart);
   const [tEnd, setTEnd] = useState(shot.tEnd);
+  const [poseUrl, setPoseUrl] = useState<string | null>(null);
+  const [showPose, setShowPose] = useState(false);
+
+  const onTogglePose = () => {
+    if (showPose) {
+      setShowPose(false);
+      return;
+    }
+    if (poseUrl) {
+      setShowPose(true);
+      return;
+    }
+    poseClip.mutate(
+      { sessionId, shotId: shot.id },
+      {
+        onSuccess: (url) => {
+          setPoseUrl(url);
+          setShowPose(true);
+        },
+      },
+    );
+  };
+
+  const videoSrc = showPose && poseUrl ? poseUrl : shot.clipUrl;
 
   const dirty = tStart !== shot.tStart || tEnd !== shot.tEnd;
   const localInvalid =
@@ -53,9 +79,10 @@ export function ShotSidebarItem({
         <span className="text-xs text-muted-foreground">{shot.source}</span>
       </div>
 
-      {shot.clipUrl ? (
+      {videoSrc ? (
         <video
-          src={shot.clipUrl}
+          key={videoSrc}
+          src={videoSrc}
           controls
           preload="metadata"
           className="aspect-video w-full rounded-md bg-black"
@@ -66,6 +93,24 @@ export function ShotSidebarItem({
         <div className="flex aspect-video w-full items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
           ยังไม่มีคลิป (clip_key ว่าง)
         </div>
+      )}
+
+      {shot.clipUrl && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          disabled={poseClip.isPending}
+          onClick={onTogglePose}
+        >
+          {poseClip.isPending
+            ? "กำลังสร้าง pose overlay…"
+            : showPose
+              ? "ซ่อน pose"
+              : poseUrl
+                ? "แสดง pose"
+                : "แสดง pose (สร้างครั้งแรก)"}
+        </Button>
       )}
 
       <p className="text-xs text-muted-foreground">

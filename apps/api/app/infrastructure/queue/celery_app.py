@@ -12,6 +12,7 @@ def make_celery_app(*, broker_url: str, result_backend: str) -> Celery:
         task_routes={
             "golf_worker.tasks.process_video": {"queue": "video"},
             "golf_worker.tasks.generate_export_zip": {"queue": "export"},
+            "golf_worker.tasks.generate_pose_clip": {"queue": "video"},
         },
     )
     return app
@@ -19,3 +20,4 @@ def make_celery_app(*, broker_url: str, result_backend: str) -> Celery:
 
 PROCESS_VIDEO_TASK = "golf_worker.tasks.process_video"
 GENERATE_EXPORT_ZIP_TASK = "golf_worker.tasks.generate_export_zip"
+GENERATE_POSE_CLIP_TASK = "golf_worker.tasks.generate_pose_clip"

@@ -1,0 +1,16 @@
+{
+  "name": "api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/api/app",
+  "tags": ["type:app", "scope:api"],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": ".venv/bin/python -m uvicorn app.main:app --reload --port 8000",
+        "cwd": "apps/api"
+      }
+    }
+  }
+}

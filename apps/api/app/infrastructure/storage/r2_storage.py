@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import boto3
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from pydantic import BaseModel
 
 
@@ -63,3 +64,12 @@ class R2Storage:
 
     async def delete_object(self, key: str) -> None:
         await asyncio.to_thread(self._client.delete_object, Bucket=self._bucket, Key=key)
+
+    async def object_exists(self, key: str) -> bool:
+        try:
+            await asyncio.to_thread(self._client.head_object, Bucket=self._bucket, Key=key)
+            return True
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise

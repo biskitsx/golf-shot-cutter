@@ -9,6 +9,7 @@ from app.deps.auth import current_user_id
 from app.services.shot_service import (
     AddManualShotInput,
     DeleteShotInput,
+    GetPoseClipInput,
     ShotService,
     UpdateShotBoundaryInput,
 )
@@ -64,3 +65,19 @@ async def delete_shot(
     service: ShotService = Depends(Provide[Container.shot_service]),
 ) -> None:
     await service.delete(DeleteShotInput(session_id=session_id, shot_id=shot_id))
+
+
+@router.post("/{shot_id}/pose-clip")
+@inject
+async def get_pose_clip(
+    session_id: str,
+    shot_id: str,
+    _user_id: str = Depends(current_user_id),
+    service: ShotService = Depends(Provide[Container.shot_service]),
+) -> ResponseSuccess:
+    signed = await service.get_pose_clip(
+        GetPoseClipInput(session_id=session_id, shot_id=shot_id)
+    )
+    return ResponseSuccess(
+        data={"url": signed.url, "expiresAt": signed.expires_at.isoformat()}
+    )

@@ -7,6 +7,7 @@ class FakeStorage:
     def __init__(self, *, base: str = "https://fake-r2.local") -> None:
         self._base = base
         self.deleted: list[str] = []
+        self.existing_keys: set[str] = set()
 
     async def signed_put_url(self, key: str, *, content_type: str) -> SignedUrl:
         return SignedUrl(
@@ -22,3 +23,6 @@ class FakeStorage:
 
     async def delete_object(self, key: str) -> None:
         self.deleted.append(key)
+
+    async def object_exists(self, key: str) -> bool:
+        return key in self.existing_keys

@@ -16,6 +16,7 @@ from app.core.models.errors import InvalidStateTransitionError, InvalidValueErro
 from fakes.fake_clock import FakeClock
 from fakes.fake_id_generator import FakeIdGenerator
 from fakes.fake_publisher import FakeEventPublisher
+from fakes.fake_storage import FakeStorage
 from fakes.in_memory_repos import InMemorySessionRepository, InMemoryShotRepository
 
 
@@ -55,11 +56,13 @@ def _clock():
     return FakeClock(datetime(2026, 4, 27, tzinfo=UTC))
 
 
-def _svc(sessions, shots, events=None, clock=None, ids=None):
+def _svc(sessions, shots, events=None, clock=None, ids=None, storage=None, celery=None):
     return ShotService(
         sessions_repo=sessions,
         shots_repo=shots,
         events=events or FakeEventPublisher(),
+        storage=storage or FakeStorage(),
+        celery=celery,  # not exercised by these tests
         clock=clock or _clock(),
         ids=ids or FakeIdGenerator(),
     )

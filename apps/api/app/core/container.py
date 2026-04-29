@@ -95,6 +95,8 @@ class Container(containers.DeclarativeContainer):
         sessions_repo=sessions_repo,
         shots_repo=shots_repo,
         events=publisher_repo,
+        storage=storage_repo,
+        celery=celery,
         clock=clock,
         ids=ids,
     )

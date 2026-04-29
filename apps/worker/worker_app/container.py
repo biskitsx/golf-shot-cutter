@@ -18,6 +18,7 @@ from app.services.processing_service import ProcessingService
 TASK_MODULES = [
     "worker_app.tasks.process_video",
     "worker_app.tasks.generate_export_zip",
+    "worker_app.tasks.generate_pose_clip",
 ]
 
 
