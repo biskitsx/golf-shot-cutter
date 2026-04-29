@@ -5,6 +5,7 @@ from app.core.container import Container
 from app.core.schemas.responses import ResponseSuccess
 from app.core.schemas.sessions import CreateSessionRequest
 from app.deps.auth import current_user_id
+from app.infrastructure.storage.r2_storage import R2Storage
 from app.services.session_service import (
     CreateSessionInput,
     GetSessionWithShotsInput,
@@ -90,12 +91,24 @@ async def get_session(
     session_id: str,
     _user_id: str = Depends(current_user_id),
     service: SessionService = Depends(Provide[Container.session_service]),
+    storage: R2Storage = Depends(Provide[Container.storage_repo]),
 ) -> ResponseSuccess:
     out = await service.get_with_shots(GetSessionWithShotsInput(session_id=session_id))
+
+    shots_dicts = []
+    for s in out.shots:
+        d = _shot_dto_dict(s)
+        if s.clip_key:
+            signed = await storage.signed_get_url(s.clip_key)
+            d["clipUrl"] = signed.url
+        else:
+            d["clipUrl"] = None
+        shots_dicts.append(d)
+
     return ResponseSuccess(
         data={
             "session": _session_dto_dict(out.session),
-            "shots": [_shot_dto_dict(s) for s in out.shots],
+            "shots": shots_dicts,
         }
     )
 
