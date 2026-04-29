@@ -31,7 +31,7 @@ export default function SessionDetailPage({
   useRealtimeInvalidation(id);
 
   if (isLoading || !data) {
-    return <p className="text-sm text-zinc-600">…</p>;
+    return <p className="text-sm text-muted-foreground">…</p>;
   }
 
   const { session, shots } = data;
@@ -39,29 +39,32 @@ export default function SessionDetailPage({
     startProcessing.isPending || session.status === "processing";
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{t("title")}</h1>
-          <div className="flex items-center gap-2">
-            <SessionStatusBadge status={session.status} />
-            <Button
-              variant="outline"
-              disabled={processingDisabled}
-              onClick={() => startProcessing.mutate(id)}
-            >
-              {startProcessing.isPending ? "…" : t("process")}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                qc.invalidateQueries({ queryKey: ["sessions", id] });
-              }}
-            >
-              {t("refresh")}
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <div className="flex items-center gap-2">
+          <SessionStatusBadge status={session.status} />
+          <Button
+            variant="outline"
+            disabled={processingDisabled}
+            onClick={() => startProcessing.mutate(id)}
+          >
+            {startProcessing.isPending ? "…" : t("process")}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              qc.invalidateQueries({ queryKey: ["sessions", id] });
+            }}
+          >
+            {t("refresh")}
+          </Button>
         </div>
+      </div>
+
+      {/* Main video + timeline */}
+      <div className="space-y-4">
         <VideoPlayer src={rawUrl.data?.url ?? null} />
         <ReviewTimeline
           shots={shots}
@@ -69,9 +72,16 @@ export default function SessionDetailPage({
         />
         <ExportButton sessionId={id} disabled={session.status !== "ready"} />
       </div>
-      <aside className="space-y-2">
+
+      {/* Shots grid */}
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Shots</h2>
+          <h2 className="text-lg font-semibold">
+            Shots{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({shots.length})
+            </span>
+          </h2>
           <Button
             variant="outline"
             disabled={add.isPending || session.status !== "ready"}
@@ -89,14 +99,17 @@ export default function SessionDetailPage({
             {t("addShot")}
           </Button>
         </div>
+
         {shots.length === 0 ? (
-          <p className="text-sm text-zinc-600">{t("noShots")}</p>
+          <p className="text-sm text-muted-foreground">{t("noShots")}</p>
         ) : (
-          shots.map((s) => (
-            <ShotSidebarItem key={s.id} shot={s} sessionId={id} />
-          ))
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {shots.map((s) => (
+              <ShotSidebarItem key={s.id} shot={s} sessionId={id} />
+            ))}
+          </div>
         )}
-      </aside>
+      </section>
     </div>
   );
 }
