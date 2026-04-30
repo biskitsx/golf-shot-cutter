@@ -17,7 +17,10 @@ dev-dependencies = [
     "mongomock-motor>=0.0.34",
     "moto[s3]>=5.0",
     "fakeredis>=2.26",
-    "httpx>=0.27"
+    "httpx>=0.27",
+    "jupyterlab>=4.2",
+    "matplotlib>=3.9",
+    "ipykernel>=6.29"
 ]
 
 [tool.ruff]
